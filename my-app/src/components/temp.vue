@@ -1,5 +1,5 @@
 <template>
-    <v-container fluid>
+    <v-container>
     <div>
     <p> Good Morning {{name}}</p>
     <button v-on:click="buttonClick">Button</button>

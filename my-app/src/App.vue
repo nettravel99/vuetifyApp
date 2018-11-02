@@ -11,7 +11,7 @@
     <v-toolbar-items class="hidden-sm-and-down">
       <v-btn  flat v-on:click="vueHome()" >Vue Home</v-btn>
       <v-btn  flat v-on:click="PreparedFiles()" >Prepared Files</v-btn>
-      <v-btn flat>Link Two</v-btn>
+      <v-btn  flat v-on:click="Premier()" >Premier</v-btn>
         <v-btn
         flat
         href="https://github.com/vuetifyjs/vuetify/releases/latest"
@@ -22,22 +22,33 @@
     </v-toolbar-items>
   </v-toolbar>
 
-   <v-content  v-bind:is="displayComponent">
-    
-    </v-content>
- 
+
+   
+    <keep-alive>
+      
+    <component  :is="displayComponent">
+     </component>
+    </keep-alive>
+
+
+
+
+
+
+
   </v-app>
 </template>
 
 <script>
 import HelloWorld from "./components/HelloWorld";
 import PreparedFiles from "./components/PreparedFiles";
-
+import Premier from "./components/Premier";
 export default {
   name: "App",
   components: {
     PreparedFiles,
-    HelloWorld
+    HelloWorld,
+    Premier
   },
   data() {
     return {
@@ -51,6 +62,9 @@ export default {
     },
     PreparedFiles() {
       this.displayComponent = "PreparedFiles";
+    },
+    Premier() {
+      this.displayComponent = "Premier";
     }
   }
 };
