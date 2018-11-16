@@ -1,21 +1,11 @@
-
 <template>
-
-
-    <v-container fluid grid-list-xl>
-
-
-      <v-layout row wrap>
-
-
-        <v-flex flex >
-
-
-          <v-card class="box1 clearfix" >
-
-
-            <v-card-text>  
-     <v-data-table
+<div>
+    <v-container fluid class="container  clearfix">
+    <div>
+    <p> Good Morning {{name}}</p>
+    <button v-on:click="buttonClick">Button</button>
+  <div class="one">
+   <v-data-table
     :headers="headers"
     :items="result"
      style="height: 19px"
@@ -53,25 +43,15 @@
 
        </template>
      
-   </v-data-table></v-card-text>
+   </v-data-table>
+   </div>
+    </div>
+  </v-container>
+<div ><p></p></div>
+<div class="two  clearfixNew" >
 
 
-          </v-card>
-
-
-        </v-flex>
-
-
-               <v-layout row justify-space-between>    
-
-
-         <v-flex flex >
-
-
-          <v-card class="box2">
-
-
-            <v-card-text>   <table>
+   <table>
 
      <tr> <td>File Name</td>
             <td>{{fileInfo.billingdate}}</td>      
@@ -116,25 +96,15 @@
             <td>{{fileInfo.typeclaims}}</td>      
     </tr>
     
-   </table></v-card-text>
+   </table>
 
 
-          </v-card>
+</div>
+
+<div class="three  clearfix" >
 
 
-        </v-flex>        
-
-
-        
-
-
-        <v-flex flex >
-
-
-          <v-card class="box2 "  >
-
-
-            <v-card-text>  <table>
+  <table>
 
      <tr> <td>Created</td>
             <td>{{ackInfo.created}}</td>      
@@ -170,40 +140,16 @@
 
    </table>
 
-</v-card-text>
 
 
-          </v-card>
 
 
-        </v-flex>
+</div>
 
+</div>
+     </template>
 
-           </v-layout>
-
-
-      </v-layout>
-
-
-    </v-container>
-
-
-</template>
-
-
-<style scope>
-.box1 {
-  width: 100%;
-
-  height: 500px;
-}
-
-.box2 {
-  width: 100%;
-
-  height: 300px;
-}
-
+<style scoped>
 table.v-table tbody td,
 table.v-table tbody th {
   height: 20px;
@@ -220,10 +166,6 @@ th {
   border: 1px solid #dddddd;
   text-align: left;
   padding: 1px;
-}
-
-tr {
-  line-height: 16px;
 }
 
 tr:nth-child(even) {
@@ -262,33 +204,36 @@ tr:nth-child(even) {
 
 .one {
   width: 100%;
-
+  border: 1;
   height: 100%;
-
-  background: rgb(6, 99, 240);
 }
 
 .two {
   width: 50%;
 
-  background: rgb(112, 231, 152);
-
   float: left;
 
   padding: 2px;
+  background: rgb(217, 238, 247);
 }
 
 .three {
   width: 49%;
 
-  background: rgb(112, 231, 152);
-
   float: right;
 
   padding: 2px;
+  background: rgb(217, 238, 247);
+}
+
+.clearfix::after {
+  content: "";
+
+  clear: both;
+
+  display: table;
 }
 </style>
-
 <script>
 import axios from "axios";
 export default {
@@ -398,7 +343,3 @@ export default {
   }
 };
 </script>
-
-
-
-
