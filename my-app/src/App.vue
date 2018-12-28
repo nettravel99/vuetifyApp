@@ -36,10 +36,12 @@ import HelloWorld from "./components/HelloWorld";
 import PreparedFiles from "./components/PreparedFiles";
 import Premier from "./components/Premier";
 import Entity from "./components/Entity";
+import PreparedFilesServer from "./components/PreparedFilesServer";
 export default {
   name: "App",
   components: {
     PreparedFiles,
+    PreparedFilesServer,
     HelloWorld,
     Premier,
     Entity
@@ -56,7 +58,7 @@ export default {
       this.displayComponent = "HelloWorld";
     },
     PreparedFiles() {
-      this.displayComponent = "PreparedFiles";
+      this.displayComponent = "PreparedFilesServer";
     },
     Premier() {
       this.displayComponent = "Entity";
