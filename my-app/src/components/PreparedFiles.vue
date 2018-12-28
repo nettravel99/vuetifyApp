@@ -11,7 +11,8 @@
                 :items="result"
                 style="height: 19px"
                 class="elevation-1"
-                hide-actions
+                :pagination.sync="pagination"
+                :rows-per-page-items="pagination.rowsPerPageItems"
               >
                 <template slot="items" slot-scope="props">
                   <tr @click="detail(props.index)" key="props.index">
@@ -156,6 +157,125 @@
 </template>
 
 
+<script>
+import axios from "axios";
+export default {
+  data: () => ({
+    name: "George",
+    FORM:
+      '<template> <v-form v-model="valid"><v-text-field v-model="name" :rules="nameRules"       :counter="10"       label="Name"       required     ></v-text-field>     <v-text-field       v-model="email"       :rules="emailRules"       label="E-mail"       required     ></v-text-field>   </v-form> </template>',
+
+    headers: [
+      {
+        text: "Index",
+        value: "index"
+      },
+      {
+        text: "Date",
+        align: "left",
+        sortable: false,
+        value: "date"
+      },
+      { text: "Entity", value: "entity" },
+      { text: "Entity Sel", value: "entitysel" },
+      { text: "Errors", value: "errors" },
+      { text: "Form", value: "form" },
+      { text: "Group Prov", value: "groupprov" },
+      { text: "Status", value: "status" },
+      { text: "Time", value: "time" },
+      { text: "Detail", value: "detail" }
+    ],
+    pagination: {
+      rowsPerPage: 25,
+      rowsPerPageItems: [10, 15, 20, 25],
+      descending: true,
+      page: 1,
+      totalItems: 0
+    },
+
+    credentials: {
+      user: "john"
+    },
+    fileInfo: [],
+    ackInfo: {},
+    result: [],
+    items: [
+      {
+        message: "Foo"
+      },
+      {
+        message: "Bar"
+      }
+    ]
+  }),
+  mounted() {
+    console.log("Mounted called");
+    axios
+      .post(
+        "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
+        this.credentials
+      )
+      .then(response => {
+        this.result = response.data.data;
+        console.log("Results from Mounted: ", this.result);
+        if (0 in this.result) {
+          this.ackInfo = JSON.parse(this.result[0].ACK);
+          this.fileInfo = JSON.parse(this.result[0].FILEINFO);
+
+          // checks if 0 is an index of result
+          //   axios
+          //     .post(
+          //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
+          //         this.result[0].DATETIMENO,
+          //       this.credentials
+          //     )
+          //     .then(response => {
+          //       this.fileInfo = response.data.data;
+          //       console.log("Results from file details: ", this.fileInfo);
+          //     });
+        }
+      });
+  },
+
+  methods: {
+    api() {
+      axios
+        .post(
+          "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
+          this.credentials
+        )
+        .then(response => {
+          this.result = response.data.data;
+          console.log("Results: ", this.result);
+        });
+    },
+    // async api() {     const result = await
+    // axios.post("http://127.0.0.1:5099/A^GJGAXIOS", this.credentials); this.result
+    // = result.data.data;     console.log("Results: ", this.result); },
+    buttonClick(xxx) {
+      alert("Button click", xxx);
+    },
+    detail: function(idx) {
+      console.log("before: ", this.result[idx].ACK);
+      this.ackInfo = JSON.parse(this.result[idx].ACK);
+      this.fileInfo = JSON.parse(this.result[idx].FILEINFO);
+
+      //   axios
+      //     .post(
+      //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
+      //         this.result[xxx].DATETIMENO,
+      //       this.credentials
+      //     )
+      //     .then(response => {
+      //       this.fileInfo = response.data.data;
+      //       console.log("Results from file details: ", this.fileInfo);
+      //     });
+    }
+  }
+};
+</script>
+
+
 <style scope>
 .box1 {
   width: 100%;
@@ -264,116 +384,6 @@ tr:nth-child(even) {
   padding: 2px;
 }
 </style>
-
-<script>
-import axios from "axios";
-export default {
-  data: () => ({
-    name: "George",
-    FORM:
-      '<template> <v-form v-model="valid"><v-text-field v-model="name" :rules="nameRules"       :counter="10"       label="Name"       required     ></v-text-field>     <v-text-field       v-model="email"       :rules="emailRules"       label="E-mail"       required     ></v-text-field>   </v-form> </template>',
-
-    headers: [
-      {
-        text: "Index",
-        value: "index"
-      },
-      {
-        text: "Date",
-        align: "left",
-        sortable: false,
-        value: "date"
-      },
-      { text: "Entity", value: "entity" },
-      { text: "Entity Sel", value: "entitysel" },
-      { text: "Errors", value: "errors" },
-      { text: "Form", value: "form" },
-      { text: "Group Prov", value: "groupprov" },
-      { text: "Status", value: "status" },
-      { text: "Time", value: "time" },
-      { text: "Detail", value: "detail" }
-    ],
-    credentials: {
-      user: "john"
-    },
-    fileInfo: [],
-    ackInfo: {},
-    result: [],
-    items: [
-      {
-        message: "Foo"
-      },
-      {
-        message: "Bar"
-      }
-    ]
-  }),
-  mounted() {
-    console.log("Mounted called");
-    axios
-      .post(
-        "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
-        this.credentials
-      )
-      .then(response => {
-        this.result = response.data.data;
-        console.log("Results from Mounted: ", this.result);
-        if (0 in this.result) {
-          this.ackInfo = JSON.parse(this.result[0].ACK);
-          this.fileInfo = JSON.parse(this.result[0].FILEINFO);
-
-          // checks if 0 is an index of result
-          //   axios
-          //     .post(
-          //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
-          //         this.result[0].DATETIMENO,
-          //       this.credentials
-          //     )
-          //     .then(response => {
-          //       this.fileInfo = response.data.data;
-          //       console.log("Results from file details: ", this.fileInfo);
-          //     });
-        }
-      });
-  },
-
-  methods: {
-    api() {
-      axios
-        .post(
-          "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
-          this.credentials
-        )
-        .then(response => {
-          this.result = response.data.data;
-          console.log("Results: ", this.result);
-        });
-    },
-    // async api() {     const result = await
-    // axios.post("http://127.0.0.1:5099/A^GJGAXIOS", this.credentials); this.result
-    // = result.data.data;     console.log("Results: ", this.result); },
-    buttonClick(xxx) {
-      alert("Button click", xxx);
-    },
-    detail: function(idx) {
-      console.log("before: ", this.result[idx].ACK);
-      this.ackInfo = JSON.parse(this.result[idx].ACK);
-      this.fileInfo = JSON.parse(this.result[idx].FILEINFO);
-
-      //   axios
-      //     .post(
-      //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
-      //         this.result[xxx].DATETIMENO,
-      //       this.credentials
-      //     )
-      //     .then(response => {
-      //       this.fileInfo = response.data.data;
-      //       console.log("Results from file details: ", this.fileInfo);
-      //     });
-    }
-  }
-};
-</script>
 
 
 

@@ -19,7 +19,7 @@
         </v-btn>
       </v-toolbar-items>
       <v-spacer></v-spacer>
-      <v-switch :label="`Dark Theme`" v-model="goDark"></v-switch>
+
       <v-btn flat icon v-on:click="changeDark()">
         <v-icon class="material-icons">invert_colors</v-icon>
       </v-btn>
