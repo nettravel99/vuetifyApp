@@ -1,193 +1,158 @@
 
 <template>
+  <v-container fluid grid-list-xl>
+    <v-layout row wrap>
+      <v-layout row justify-space-between>
+        <v-flex flex>
+          <v-card class="box1 clearfix">
+            <v-card-text>
+              <v-data-table
+                :headers="headers"
+                :items="result"
+                style="height: 19px"
+                class="elevation-1"
+                hide-actions
+              >
+                <template slot="items" slot-scope="props">
+                  <tr @click="detail(props.index)" key="props.index">
+                    <td>{{props.index}}</td>
+                    <td>{{props.item.date}}</td>
+                    <td>{{props.item.entity}}</td>
+                    <td>{{props.item.entitysel}}</td>
+                    <td>{{props.item.errors}}</td>
+                    <td>{{props.item.form}}</td>
+                    <td>{{props.item.groupprov}}</td>
+                    <td>{{props.item.status}}</td>
+                    <td>{{props.item.time}}</td>
 
-
-    <v-container fluid grid-list-xl>
-
-
-      <v-layout row wrap>
-
-
-        <v-flex flex >
-
-
-          <v-card class="box1 clearfix" >
-
-
-            <v-card-text>  
-     <v-data-table
-    :headers="headers"
-    :items="result"
-     style="height: 19px"
-    class="elevation-1"
-    hide-actions
- 
- 
-  >
-   
-         <template slot="items" slot-scope="props"  >
-           <tr   @click="detail(props.index)"> 
-            <td>{{props.index}}</td>
-            <td>{{props.item.date}}</td>
-            <td>{{props.item.entity}}</td>
-            <td>{{props.item.entitysel}}</td>
-            <td>{{props.item.errors}}</td>
-            <td>{{props.item.form}}</td>
-            <td>{{props.item.groupprov}}</td>
-            <td>{{props.item.status}}</td>
-            <td>{{props.item.time}}</td>
-   
-  
-      <v-icon
-        class="mr-2"
-        slot="activator"
-        color="primary"
-        dark
-        @click="detail(props.index)"
-        medium
-      >pageview</v-icon>
-    
- 
-        
-    </tr>
-
-       </template>
-     
-   </v-data-table></v-card-text>
-
-
+                    <v-icon
+                      class="mr-2"
+                      slot="activator"
+                      color="primary"
+                      dark
+                      @click="detail(props.index)"
+                      medium
+                    >pageview</v-icon>
+                  </tr>
+                </template>
+              </v-data-table>
+            </v-card-text>
           </v-card>
-
-
         </v-flex>
-
-
-               <v-layout row justify-space-between>    
-
-
-         <v-flex flex >
-
-
-          <v-card class="box2">
-
-
-            <v-card-text>   <table>
-
-     <tr> <td>File Name</td>
-            <td>{{fileInfo.billingdate}}</td>      
-    </tr>
-
-     <tr> <td>Submitter ID</td>
-            <td>{{fileInfo.submitterid}}</td>      
-    </tr>
-    
-     <tr> <td>Sender ID</td>
-            <td>{{fileInfo.senderid}}</td>      
-    </tr>
-    
-     <tr> <td>File ID</td>
-            <td>{{fileInfo.fileid}}</td>      
-    </tr>
-    
-     <tr> <td>File Size</td>
-            <td>{{fileInfo.filesize}}</td>      
-    </tr>
-    
-     <tr> <td>Billing Date</td>
-            <td>{{fileInfo.billingdate}}</td>      
-    </tr>
-    
-     <tr> <td>Submit with Errors</td>
-            <td>{{fileInfo.submitwitherror}}</td>      
-    </tr>
-         <tr> <td>Total Claims</td>
-            <td>{{fileInfo.totalclaims}}</td>      
-    </tr>
-    
-         <tr> <td>Total Amount</td>
-            <td>{{fileInfo.totalamt}}</td>      
-    </tr>
-    
-         <tr> <td>Number of Segments</td>
-            <td>{{fileInfo.nosegment}}</td>      
-    </tr>
-        
-         <tr> <td>Type of Claims</td>
-            <td>{{fileInfo.typeclaims}}</td>      
-    </tr>
-    
-   </table></v-card-text>
-
-
-          </v-card>
-
-
-        </v-flex>        
-
-
-        
-
-
-        <v-flex flex >
-
-
-          <v-card class="box2 "  >
-
-
-            <v-card-text>  <table>
-
-     <tr> <td>Created</td>
-            <td>{{ackInfo.created}}</td>      
-    </tr>
-
-     <tr> <td>ITS</td>
-            <td>{{ackInfo.ITS}}</td>      
-    </tr>
-    
-     <tr> <td>Number</td>
-            <td>{{ackInfo.NO}}</td>      
-    </tr>
-    
-     <tr> <td>File</td>
-            <td>{{ackInfo.file}}</td>      
-    </tr>
-    
-     <tr> <td>Sent by Operator</td>
-            <td>{{ackInfo.operator}}</td>      
-    </tr>
-         <tr> <td>Sent</td>
-            <td>{{ackInfo.sent}}</td>      
-    </tr>
-    
-     <tr> <td>Acknowledgement</td>
-            <td>{{ackInfo.result}}</td>      
-    </tr>
-    
-
-         <tr> <td>ID</td>
-            <td>{{ackInfo.ID}}</td>      
-    </tr>
-
-   </table>
-
-</v-card-text>
-
-
-          </v-card>
-
-
-        </v-flex>
-
-
-           </v-layout>
-
-
       </v-layout>
 
+      <v-layout row justify-space-between>
+        <v-flex flex>
+          <v-card class="box2">
+            <v-card-text>
+              <table>
+                <tr>
+                  <td>File Name</td>
+                  <td>{{fileInfo.billingdate}}</td>
+                </tr>
 
-    </v-container>
+                <tr>
+                  <td>Submitter ID</td>
+                  <td>{{fileInfo.submitterid}}</td>
+                </tr>
 
+                <tr>
+                  <td>Sender ID</td>
+                  <td>{{fileInfo.senderid}}</td>
+                </tr>
 
+                <tr>
+                  <td>File ID</td>
+                  <td>{{fileInfo.fileid}}</td>
+                </tr>
+
+                <tr>
+                  <td>File Size</td>
+                  <td>{{fileInfo.filesize}}</td>
+                </tr>
+
+                <tr>
+                  <td>Billing Date</td>
+                  <td>{{fileInfo.billingdate}}</td>
+                </tr>
+
+                <tr>
+                  <td>Submit with Errors</td>
+                  <td>{{fileInfo.submitwitherror}}</td>
+                </tr>
+                <tr>
+                  <td>Total Claims</td>
+                  <td>{{fileInfo.totalclaims}}</td>
+                </tr>
+
+                <tr>
+                  <td>Total Amount</td>
+                  <td>{{fileInfo.totalamt}}</td>
+                </tr>
+
+                <tr>
+                  <td>Number of Segments</td>
+                  <td>{{fileInfo.nosegment}}</td>
+                </tr>
+
+                <tr>
+                  <td>Type of Claims</td>
+                  <td>{{fileInfo.typeclaims}}</td>
+                </tr>
+              </table>
+            </v-card-text>
+          </v-card>
+        </v-flex>
+
+        <v-flex flex>
+          <v-card class="box2">
+            <v-card-text>
+              <table>
+                <tr>
+                  <td>Created</td>
+                  <td>{{ackInfo.created}}</td>
+                </tr>
+
+                <tr>
+                  <td>ITS</td>
+                  <td>{{ackInfo.ITS}}</td>
+                </tr>
+
+                <tr>
+                  <td>Number</td>
+                  <td>{{ackInfo.NO}}</td>
+                </tr>
+
+                <tr>
+                  <td>File</td>
+                  <td>{{ackInfo.file}}</td>
+                </tr>
+
+                <tr>
+                  <td>Sent by Operator</td>
+                  <td>{{ackInfo.operator}}</td>
+                </tr>
+                <tr>
+                  <td>Sent</td>
+                  <td>{{ackInfo.sent}}</td>
+                </tr>
+
+                <tr>
+                  <td>Acknowledgement</td>
+                  <td>{{ackInfo.result}}</td>
+                </tr>
+
+                <tr>
+                  <td>ID</td>
+                  <td>{{ackInfo.ID}}</td>
+                </tr>
+              </table>
+            </v-card-text>
+          </v-card>
+        </v-flex>
+      </v-layout>
+    </v-layout>
+  </v-container>
 </template>
 
 
@@ -195,7 +160,7 @@
 .box1 {
   width: 100%;
 
-  height: 500px;
+  height: 900px;
 }
 
 .box2 {
@@ -215,6 +180,17 @@ table {
   width: 100%;
 }
 
+thead {
+  background-color: rgb(110, 193, 248);
+  color: blue;
+
+  tr {
+    display: block;
+    position: relative;
+    color: red;
+  }
+}
+
 td,
 th {
   border: 1px solid #dddddd;
@@ -227,7 +203,7 @@ tr {
 }
 
 tr:nth-child(even) {
-  background-color: #dddddd;
+  background-color: rgb(180, 219, 245);
 }
 
 .container {
@@ -279,7 +255,7 @@ tr:nth-child(even) {
 }
 
 .three {
-  width: 49%;
+  width: 50%;
 
   background: rgb(112, 231, 152);
 

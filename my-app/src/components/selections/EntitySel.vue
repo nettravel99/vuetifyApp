@@ -1,10 +1,8 @@
 <template>
-  <v-container fluid grid-list-lg  >
-<v-layout>
+  <v-container  grid-list-lg  class="containerSelect" >
+<!-- <v-layout  >
 
 <v-flex xs3 red>
-
-
 
 </v-flex>
 
@@ -23,20 +21,20 @@
 
 
 </v-flex>
-</v-layout>
+</v-layout> -->
 
 
 
 
-<v-layout row justify-space-around>
+<v-layout row  class="pl-0 my-0" >
   
   
-  <v-flex xs4 class="pl=0 my-0" >
+  <v-flex xs4 class="pl-0 my-0 " >
       </v-flex>
 
-     <v-flex xs1 class="pl=0 my-4" >
+     <v-flex xs1 class="pl-0 my-3" >
        <v-card flat>
-           <v-text>
+           <v-text >
           
           <h3>Entity</h3> 
         
@@ -45,7 +43,7 @@
     </v-flex>
 
 
-<v-flex xs3 class="pl=0 my-0">
+<v-flex xs3 class="pl-0 my-0 flexSelect">
    <v-card-actions>
  <v-radio-group row v-model="EntitySel" class="py-3 my-0"  >
       <v-radio 
@@ -75,12 +73,35 @@
 </v-flex>
 
 
-      <v-flex xs6 class="pl=0 my-0">
+      <v-flex xs6 class="pl-0 mt-1">
              <v-card-actions >
-            <v-select v-bind:items="states" v-model="a1" label="" autocomplete multiple chips></v-select>
+            <v-select v-bind:items="states" v-model="a1"  label="Select Item" autocomplete multiple chips></v-select>
+    <!-- <v-select
+      :items="states"
+      v-model="value"
+      label="Select Item"
+      multiple
+    >
+      <template
+        slot="selection"
+        slot-scope="{ item, index }"
+      >
+        <v-chip v-if="index<6">
+          <span>{{ item }}</span>
+        </v-chip>
+        <span
+          v-if="index === 7"
+          class="grey--text caption"
+        >(+{{ value.length - 6 }} others)</span>
+      </template>
+    </v-select> -->
+
+
+
+
                </v-card-actions>
      </v-flex>
-       <v-flex xs4 class="pl=0 my-0" >
+       <v-flex xs4 class="pl-0 my-0" >
       </v-flex>
      
      </v-layout>
@@ -208,7 +229,7 @@
   font-size: 14px;
   color: black !important;
 }
-.divx {
+.divxNotUsed {
   padding-top: 0px;
   padding-right: 0px;
   padding-bottom: 0px;
@@ -218,8 +239,40 @@
 
 .inline {
   display: inline-block;
+
   border: 1px solid red;
   margin: 5px;
+}
+
+.v-text-field {
+  padding-top: 0px;
+  margin-top: 0px;
+}
+
+.flexSelect,
+.child-flex > * {
+  -webkit-box-flex: 1;
+  height: auto;
+  -ms-flex: 1 1 auto;
+  flex: 1 1 auto;
+  max-width: 100%;
+}
+
+.v-card__actions {
+  -webkit-box-align: center;
+  -ms-flex-align: center;
+  align-items: center;
+  display: -webkit-box;
+  display: -ms-flexbox;
+  display: flex;
+  padding: 0px;
+}
+
+.containerSelect {
+  width: 100%;
+  height: auto;
+  margin: auto;
+  padding: 0px;
 }
 </style>;
 
