@@ -1,0 +1,3680 @@
+Cache for Windows^INT^^~Format=Cache.S~^RAW
+%RO on 04 Jan 2019   1:40 PM
+FUNCT4^INT^1^65006,43460.640843^0
+FUNCT4  ; ;2018-08-20 16:08:52
+	Q
+XML(XMLSw,TAB,ELEMENT,VALUE,CLOSE)
+	i 'XMLSw w:VALUE'="" ?TAB,VALUE q
+	s XMLResult=$G(XMLResult)
+	s VALUE=$TR(VALUE,"""'><&","")
+	i CLOSE=0 s XMLResult=XMLResult_"<"_ELEMENT_">"_VALUE  q
+	i CLOSE=1 s XMLResult=XMLResult_"<"_ELEMENT_">"_VALUE_"</"_ELEMENT_">" q
+	i CLOSE=2 s XMLResult=XMLResult_"</"_ELEMENT_">"
+	q
+	
+	
+	
+chkProcess(processToChk, nameSpace ) ;
+	i $g(nameSpace)="" s nameSpace=$SYSTEM.SYS.NameSpace()  ; set to the current namespace if nothing is passed  in
+	s running=0
+	s $zt="EndProcessChk"
+	Set Rset = ##class(%ResultSet).%New("%SYS.ProcessQuery:ListPids")
+	d Rset.Execute()
+	While Rset.Next()&('running) {
+	s processId=Rset.Data("Pid")
+	s Process=##CLASS(%SYS.ProcessQuery).%OpenId(processId)
+	i Process.Routine = processToChk & ( Process.NameSpace = nameSpace)  s running=1 
+	;;zw Rset
+	;I processId>0 d
+	.;w Process.GetLoginRoutine()  
+	;.zw Process
+	}
+EndProcessChk  ;
+	d Rset.Close()
+	s $zt=""
+	q running
+getDiag(tr)
+	n dg,i,t
+    F i=21,22,23,42    D 
+    .S t=$P(tr,":",i)
+    .I i=21 S dg(3)=$P(t,"^",1),dg(4)=$P(t,"^",2)   Q 
+    .I i=22 S dg(1)=t   Q 
+    .I i=23 S dg(2)=t   Q 
+    .I i=42 F j=1:1 S t1=$P(t,"^",j) Q:j=""  S dg(j+4)=t1  Q 
+	w $p(tr,":",21,23),"  ",$p(tr,":",42),!
+	zw dg
+	w !
+    Q 1
+go	;
+GO	;
+    k ^g
+   ;20161013)=411953
+   ;20161014)=411972
+   ;20161015)=412001
+    s stop=411971
+	s T="^TRG"
+	F  S T=$Q(@T) Q:T=""  q:T>stop  I $P(@T,":",4)="P"  S TT=$$getDiag^FUNCT4(@T) d  
+	.s x=""
+	.f  s x=$o(dg(x)) q:x=""  s ^g(dg(x))=""
+	q
+new	;
+    s t=""
+    f  s t=$o(^DGG(t)) q:t=""!(t="~#")  d  
+    .s s=^DGG(t)
+    .i $D(^ODGG(t)) q
+    .i $p(s,":",11)=""  b  s ^ODGG(t)=^DGG(t) q   ; no cross reference
+    .s $p(s,":",11)=^DGG("~#"),^DGG("~#")=^DGG("~#")+1 b  s ^ODGG(t)=s q
+ 
+  Q
+  
+GetNamespaceFolder()
+ n folder
+ D INT^%DIR,NSP^%DIR 
+ s folder=%SYSDIR
+ q folder
+ 
+GetReportsFolder()
+ n UNIX,DELIM,folder
+ s folder=$$GetNamespaceFolder()
+ if ($G(^MSCG("ADDSUBDIR"))) S UNIX=$S($ZV["UNIX":1,1:0),DELIM=$S(UNIX:"/",1:"\") s folder=folder_"claims"_DELIM
+ q folder
+ 
+UFRND(ACCT,PAT,USRFRM,TYP=1,FLD=1)
+ ; TYP=1 field will be returned in the order they appear on the screen.
+ ; TYP=0 field will be returned in the order they were entered.
+ ; FLD=0 field headers with 10 character limit will be returned.
+ ; FLD=1 field in XML Tag from USER FORM ( Piece 32 ) will be returned
+ K TMPREC S FSTR="<records>"
+ S A="" F  S A=$O(^USRFRMG(USRFRM,A)) Q:A=""  D
+ . S TGX=$Select(FLD=0:$Extract($P(^USRFRMG(USRFRM,A),":",1),1,10),FLD=1:$P(^USRFRMG(USRFRM,A),":",32))
+ . I TYP=1 S M=A
+ . I TYP=0 S M=$P(^USRFRMG(USRFRM,A),":",26)
+ . i TGX'="" S TMPREC(M)=TGX_":"_$P(^USRFRMG(USRFRM,A),":",26)
+ I $D(TMPREC)  D
+ . S FRM=$O(^PTG(ACCT,PAT,"USRFRM",USRFRM,""),-1) I FRM'=""  D
+ .. S FSTR=FSTR_"<rec no="""_FRM_""">"
+ .. S REC="" F  S REC=$O(TMPREC(REC)) Q:REC=""  D
+ ... S XMLTAG=$ZConvert($P(TMPREC(REC),":",1),"L"),XMLTAG=$Translate(XMLTAG," ","_")
+ ... S FSTR=FSTR_"<"_XMLTAG_">"_$P(^PTG(ACCT,PAT,"USRFRM",USRFRM,FRM),":",$P(TMPREC(REC),":",2))_"</"_XMLTAG_">"
+ .. S FSTR=FSTR_"</rec>"
+ S FSTR=FSTR_"</records>"
+ Q FSTR
+ q
+STACK ;
+	F S=1:1:$STACK(-1) W "Stack: ",S,$C(9) W !,"Location: ",$STACK(S,"PLACE"),!,$C(9) W "Code: ",$STACK(S,"MCODE"),!!!
+	Q
+printVARS ;
+	S zDebug=""  F I=1:1 S zDebug=$O(@zDebug)  Q:zDebug=""  I zDebug'="zDebug" ZW @zDebug  
+	Q
+setVars(id) ;
+	k ^debug(id,"vars")
+	D
+	. N T
+	. S T=""  F  S T=$O(@(T))  Q:T=""  I T'="T" M ^debug(id,"vars",T)=@T
+	. Q
+	I $D(T) M ^debug(id,"vars","T")=T
+	q
+getVars(id) ;
+    D
+    . N T
+    . s T=""
+ 	. F  S T=$o(^debug(id,"vars",T)) q:T=""  I T'="T" M @T=^debug(id,"vars",T)
+ 	. Q
+ 	M T=^debug(id,"vars","T")
+ 	Q
+log(msg,data)
+    s ctr=$zp(^gLog(""))+1 
+	s ^gLog(ctr)=msg_":"_data
+	q
+ 
+ 
+
+GJGAXIOS^INT^0^65017,37613.869741^0
+GJGAXIOS	;
+	q
+	;Programs changed ^TKVB GETE and GETM
+	;TKWEBH, TKVBUT2,  
+A	; TKWEB NOCHECK
+	; OTHERMM is a global variable passed in MARK. 
+	;It contains the header information that MARK will include in his response.
+	; TYPE is a global variable passed in by MARK for the type of content. 
+	;;d setVars^FUNCT4(1)
+	;;d getVars^FUNCT4(1)
+    d log^FUNCT4("GJGAXIOS called :",$H)
+	d SetHeaders(.OTHERMM,.TYPE)  ; Sets the http headers needed for AXIOS
+	; webCall indicates this is from a REST call 
+	; result will hold the final result that will be written out. 
+	s NOWRITE="^webEntry"
+	n result,webCall,webItem,ctr,JSON,t
+.
+	s webItem=""
+	s webCall=1
+	s ctr=1
+	; This strips the values passed in for example:
+	; "P1=LIST&MODULE=EISCP"
+	; will be converted to P1="LIST" and MODULE="EISCP"
+	S DATA=$G(%("FORM","DATA"))
+	f {
+		s t=$p(DATA,"&",ctr) 
+		q:t=""!(t'["=")
+		s @$p(t,"=",1)=$p(t,"=",2)
+		s ctr=ctr+1
+		
+	}
+	; converts the data passed in the body from JSON to an array 
+	s body=%("BODY")
+	i body'="" d FJSON^TKAAUTIL($na(body),$na(r),$na(e))
+	s ctr=0
+	s USER="MG"   //????????? needs to come from call
+d	;;d setVars^FUNCT4
+	;;d getVars^FUNCT4
+	S:'$D(P2) P2=""
+	; 
+	; WebTable is where the data is retrieved depending on the the parameters passed in
+	; P1 and MODULES - servers a jump table. 
+	d ^webTable
+	; The results returned by the programs called by ^webTable 
+	d writeJSON
+	; This must be removed for the data to be written out 
+	K NOWRITE
+	q
+writeJSON ;
+	  k ^JSON
+	  m ^JSON=JSON
+.
+      s serverSide=$g(r("serverSide"))
+      s page=$g(r("pagination","page"))
+      s rowsPerPage=$g(r("pagination","rowsPerPage"))
+      s ^GJG(88)=serverSide_":"_page_":"_rowsPerPage
+      m ^GJG("r")=r
+      k servData
+        if (serverSide="true"){
+	      s from=page*rowsPerPage
+	      s thru=((page+1)*rowsPerPage)-1
+	      s ^GJG(99)=from_":"_thru
+	      m ^GJG("result")=RESULT
+	      f i=from:1:thru m servData("data",i)=JSON("data",i)
+      }
+      else{
+      		m servData=JSON
+      }
+      D TJSON^TKAAUTIL($NA(servData),$NA(RESULT),$NA(ERROR))      
+      s t=""
+      f  s t=$o(RESULT(t)) q:t=""  w RESULT(t)
+      q
+	
+B	; TKWEB NOCHECK
+	; OTHERMM is a global variable passed in MARK. 
+	;It contains the header information that MARK will include in his response.
+	; TYPE is a global variable passed in by MARK for the type of content. 
+	d SetHeaders(.OTHERMM,.TYPE)
+.
+	;;d list^webIns 
+.
+	n r,e,out,a,res
+	;%("BODY") contains the body of the message in JSON Format   FJSON^TKAAUTIL extracts the JSON into the "r" vector. 
+	;
+	d FJSON^TKAAUTIL($na(%("BODY")),$na(r),$na(e))
+	;
+	// if the JSON is passed in as {"credentials": { "email":"aaa@adsc.com", "password" : "*******"}}
+	n email,password    
+	s email 	= r("credentials","email")
+	s password 	= r("credentials","password") 
+	;
+	;if password is invalid => This needs to be a password validation function called. 
+	i $l(password)=1 s out("errors","global")="Invalid Credentials - during login---from mumps!",ST=400
+	;
+	;otherwise =>
+	e  d
+	. s out("status")="success"
+	. s out("data","email")=email
+	. s out("data","token")=$$EncodeJWT^TKAAUTIL20($SYSTEM.Util.CreateGUID(),"AdsAdmin")   ; This creates the Jason token
+	. s out("data","message")="Retrieved User Data"
+	;
+	k e  
+	d TJSON^TKAAUTIL($na(out),$na(res),$na(e))   ; TJSON is TO JSON
+	n a s a="" f  s a=$o(res(a)) q:a=""  w res(a)
+	q
+	;
+	;
+SetHeaders(H,T)
+	s ^GJG=8888888
+	s T="application/json; charset=utf-8"
+	S H=$G(H)_"X-DNS-Prefetch-Control: off"_$C(13,10)
+	S H=$G(H)_"X-Frame-Options: SAMEORIGIN"_$C(13,10)
+	S H=$G(H)_"Strict-Transport-Security: max-age=15552000; includeSubDomains"_$C(13,10)
+	S H=$G(H)_"X-Download-Options: noopen"_$C(13,10)
+	S H=$G(H)_"X-Content-Type-Options: nosniff"_$C(13,10)
+	S H=$G(H)_"X-XSS-Protection: 1; mode=block"_$C(13,10)
+	S H=$G(H)_"Access-Control-Allow-Origin: *"_$C(13,10)
+	S H=$G(H)_"Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept"_$C(13,10)
+	Q
+
+STPXMLcmb^INT^0^65015,44411.761249^0
+STPXMLcmb ;Statements to XML File;2018-12-17 14:23:10;Ver 2.11;MG; 06 Jun 2007 12:05 PM
+ ; This program produces statements in XML format.
+ ; This format for Lora to print nicely in Premier.
+ ; Note - This version has Insurance and Patient Balances broken out.
+ ; THis program goes together with STPXMLcmb form. 
+ ;
+PRINT ;****** Printing  *********
+ ;;Q:K'=51861 
+ i '$g(moneySw) s moneySw=$g(^MSCG("STP","STPXML6","FORMATMONEY"))
+ S STPXML=1,GR1=^GRG(K),PVTR=0,PRE=$S($D(^MSCG("STPXML6","NOPRE")):0,1:1) 
+ S:$D(^MSCG("STPEZ")) PRM=^PRMG(1,1) 
+ S XMLCT=1,SAVXML="" F I=2:1:9 S @("SAVXML"_I)=""
+ ; Get financial types
+ S t=$$PA^FUNCTF,F5=$P(t,":",3),F6=$P(t,":",2),F3="INP",F4="PRP",F1=$P(t,":",1)_" "_F5,F2=F6
+ ;S F1="PRPINPIDCWOCDSCAICTTC",F2="CADOTDTFD"
+ ;S F3="INP",F4="PRP",F5="WOCDSCAICTTCIDC",F6="CADOTDTFD" ; was F1,F2,F3,F4
+ S NEWBUCKET=$S($D(^MSCG("STPXML6","NEWBUCKETS")):1,1:0)
+ S A(1)=0,A(2)=31,A(3)=61,A(4)=91,A(5)=121 F I=1:1:5 S AG(I)=0
+ S MULT=$S($D(^MSCG("STPXML6","MULTIPLE",EZ)):1,1:0),LOOP=1 I MULT S T=^(EZ),LOOP=$S(T'="":T,1:4) ; If MULT=1 Send statement to Attorney(s) too.
+ d combine 
+ ;
+ 
+ F III=1:1:LOOP D
+ . I III>1 S RFATT=$P($G(^PTG(K,PATNO,2)),":",III-1),RFATT=$P(RFATT,"  ",1) Q:$TR(RFATT," ","")=""
+ . S (IBL,PBL,CLN)=0,NPAT=0 S:$P(GR1,":",2)>1&('$D(^MSCG("STP66L","PRINTPAT"))) NPAT=1 D PGE
+ . I III=1,BALFW S PBL=PBL+BALFW
+ . ; I $D(^MSCG("STP","SERVICE")) D WR("<SERVICES>","",1)
+ . I '$D(^MSCG("STPXML6","NOBALFORWARD"))&('$D(^MSCG("STP","NOBALFW","STPXML6"))) D 
+ .. I $D(^MSCG("STP","SERVICE"))  D WR("<SERVICES>","",1) 
+ .. s balFwdMsg="Balance forward last statement" 
+ .. i $G(PRGM)'="",$g(^MSCG("STP","STPXML6","BALFWDMSG"))'="" s balFwdMsg=^MSCG("STP","STPXML6","BALFWDMSG") 
+ .. D WR("SERVICEDATE",""),WR("FinancialTransaction",balFwdMsg),WR("Amount",$$FMT(BALFW))
+ .. I $D(^MSCG("STP","SERVICE"))  D WR("</SERVICES>","",1)
+ . I '$D(^MSCG("STPEZ")) s record="^newARRY("_$J_")"  f  s record=$q(@record) q:record=""  q:$qs(record,1)'=$J!($qs(record,3)=9)  d  ;;S TR=-1 F I=1:1 S TR=$N(^ARRY($J,TR)) Q:TR=-1  S TYPE=-1 F I=1:1 S TYPE=$N(^ARRY($J,TR,TYPE)) Q:TYPE=-1  S TR1=-1 F I=1:1 S TR1=$N(^ARRY($J,TR,TYPE,TR1)) Q:TR1=-1  S TS=^ARRY($J,TR,TYPE,TR1) D
+ .. I $D(^MSCG("STP","SERVICE")) D WR("<SERVICES>","",1)
+ .. D PRINT1
+ .. I $D(^MSCG("STP","SERVICE"))  D WR("</SERVICES>","",1) 
+ . D TOT
+ . D WR("</STATEMENT>","",1)
+ . ; must reach this point with TYPE=9 for the totals etc. 
+ . I record'="",$qs(record,3)=9,$G(PRINTSW)<1 D TKSTP^STP1(TEZ,K,$G(K1,0),@record)
+ .i record="" k ^tmpArry  m ^tmpArry=^newARRY
+ Q
+PRINT1 ;
+ ; Proc=type 1   Fin=type 2   Msg=type 3   Fin(left)=type 4
+ s TYPE=$qs(record,3)
+ Q:TYPE=9   ;; Should never reach this point 
+ s DOS=$qs(record,2)  ; YYYYMMDD
+ s pDOS=$e($$DSS^IDATE(DOS),1,8)  ; print date  - take 8 in case there is a thru date
+ s code=$qs(record,4) 
+ I $D(^MSCG("STPXML6","NOMESS")),TYPE=3 Q
+ s recData=@record
+ I TYPE=3,$E(code,1)'="+"  D WR("SERVICEDATE",pDOS),WR("MESSAGETRANSACTION",$E(code,1,999)) Q  
+ I TYPE=3,$E(code,1)="+"&($D(^PMG($E(code,2,$L(code))))) S code=^PMG($E(code,2,$L(code))) D:"SE"[$P(code,":",3) WR("SERVICEDATE",pDOS),WR("MESSAGETRANSACTION",$E($P(code,":",2),1,999)) Q  
+ s amount=$p(@record,":",1)
+ I TYPE=4 D PAY   
+ ;Patient/Insurance balance.   Needs to be moved to STP 
+ ;I TYPE=1 D
+ ;.I $G(^MSCG("STP","STPXML6","AGING"))'="" D PRC
+ ;.S CLN=0,T=$P(S,":",19) I T="" Q
+ ;.F T9=1:1:4 S T2=$P(T,"~",T9) Q:T2=""  I $E(T2)="A"&($E(T2,2)<2&($E(T2,2)'="N")) S CLN=1 Q
+ ;I TYPE=4 S CLN=0
+ ;S AMT=$S(TYPE=1:$P(TS,":",5),1:$P(TS,":",3)),SGN=1 I TYPE>1,$P(S,":",16)="APN" S SGN=0
+ ;S:'CLN PBL=PBL+(AMT*SGN) S:CLN IBL=IBL+(AMT*SGN)
+ ;
+ I 'NEWBUCKET!(NEWBUCKET&(TYPE'=2)) D
+ . i TYPE=2 d WR("SERVICEDATE","")
+ . i TYPE'=2 d WR("SERVICEDATE",pDOS)
+ . ;;I $P(DATE,"^",2)'="" D WR("SERVICEENDDATE",$$DSS^IDATE($P(DATE,"^",2)))
+ I TYPE>1 D  Q
+ . I NEWBUCKET&(TYPE=2) Q   ; this breaks the financial types down further
+ . ;D WR("FINANCIALTRANSACTION",$E(T_" "_$P(^FLG(T),":",2),1,36))
+ . s finType=$p(recData,":",2) 
+ . if finType="APN" s code=code_$$FMT(amount)   ; add the amount to the description
+ . D WR("FINANCIALTRANSACTION",code)
+ . q:finType="APN"   ; printed with the description
+ . D WR("AMOUNTFIN",$$FMT(amount)) 
+ . ; Below is for seprating adjustments from payments - need to add a quit above and change to STPXMLcmb1 background
+ .; if finType="INP"!(finType="PRP") D WR("AMOUNTFIN",$$FMT(amount)) q
+ .; D WR("ADJBUCKET",$$FMT(amount))
+ 
+ D WR("PROCEDUREDES","SERVICE RENDERED")      ;; WR("PROCEDURECODE","xxx" )  or PROCEDUREDES
+ I $D(^MSCG("STPXML6","NOPROCEDURE")) D WR("TPMSG",TPMSG)   
+ ;
+ I '$D(^MSCG("STPXML6","NODIAG")) S T=$P(S,":",22),DG1=$S(T'="":$P(^INDG(T),":",1),1:"") D WR("ICD9CD",DG1)
+ ;S T=$P(S,":",15) D:T'="" WR("PLACE",T)
+ D WR("AMOUNT",$$FMT(amount))
+ 
+ D WR("PATIENTBAL",$$FMT($p(@record,":",2)))
+ ;; To do need to get all TR1 from original ARRAY
+ ;
+ ;    -------------------  todo -------------------------------
+ q
+ ;
+ ;
+ ;
+ I '$d(^STMTDT(TEZ,K,TR1)),'$G(PRINTSW) s ^STMTDT(TEZ,K,TR1)=+$H   ;; PRINTSW is set when in PREVIEW mode. 
+ ;S T=AMT*SGN
+  ;; To do need to get all TR1 from original ARRAY
+ s T=^TRG(TEZ,TR1),vBalFW=$g(vBalFW)_"L,"_TR1_","_$p(TS,":",5)_","_($P(T,":",9)-$P(T,":",10))_":"
+ I PRE,$P(TS,":",6)'="" D WR("PREMESS",$P(TS,":",6)) ; 8/9/10 - Added precoded message.
+ ; 4/8/15 - New buckets here.
+  ;; To do need to get all TR1 from original ARRAY
+ I NEWBUCKET D
+ . S S=^ARRY($J,TR,1,TR),INP=$P(S,":",10),PRP=$P(S,":",11),ADJ=$P(S,":",12),REM=AMT+(INP+PRP+ADJ)
+ . D WR("INSBUCKET",$$FMT(INP)),WR("PATBUCKET",$$FMT(PRP)),WR("ADJBUCKET",$$FMT(ADJ)),WR("BALBUCKET",$$FMT(REM))
+ Q
+PRC ;  no aging in this program for now - will need to be done long before here.
+ n T,T1,last,diff,amt
+ S amt=$P(S,":",9)-$P(S,":",10) Q:amt=0
+ ; Aging done from last activity date - one option 
+ ;I '$D(^MSCG("STPEZ")) D
+ ;.S T=$G(^GRG(TEZ,K)),T1=$P(T,":",1) I $P(T,":",2)>T1 S T1=$P(T,":",2)
+ ;.S last=$$JUL^IDATE(T1) ; Last Activity date.
+ s last=$g(^STMTDT(TEZ,K,TR1)) 
+PRC1 ;;S jul=$P(S,":",1)
+ s jul=+$h
+ i last'="" s ^T(K,TR1)=last_":"_jul 
+ s:last="" last=jul  
+ S diff=jul-last
+ I diff<A(2) S AG(1)=amt+AG(1) Q
+ I diff<A(3) S AG(2)=amt+AG(2) Q
+ I diff<A(4) S AG(3)=amt+AG(3) Q
+ I diff<A(5) S AG(4)=amt+AG(4) Q
+ S AG(5)=amt+AG(5)
+ Q
+TOT ;
+ D REFR
+ D WR("CURRENTAMOUNT",$$FMT(CURRENT)) ;N SAVEL
+ D WR("PASTDUEAMOUNT",$$FMT(PSTDUE))
+ I $G(^MSCG("STP","STPXML6","AGING"))'="" d
+ .D WR("DAYS30",$J(AG(2)/100,0,2))
+ .D WR("DAYS60",$J(AG(3)/100,0,2))
+ .D WR("DAYS90",$J(AG(4)/100,0,2))
+ .D WR("DAYS120",$J(AG(5)/100,0,2))
+ ;;D WR("INSBAL",$$FMT(IBL))
+ S PBL = CURRENT + PSTDUE   ; Assuming there are no insurance responsible charges. 
+ D WR("PATBAL",$$FMT(PBL))
+ S T=IBL+PBL D WR("TOTBAL",$$FMT(T))
+ D WR("STATEMENTDATE",TODAY)
+ D WR("ACCOUNTNUMBER",ACCT)
+ S T=$S($D(^MSCG("STPXML6","DUE")):^("DUE"),1:14),DUE=+$H+T,DUE=$$DSS^IDATE(DUE)
+ D WR("DUEBY",DUE)
+ s vBalFW=vBalFW_"T,"_CURRENT_","_PSTDUE_","_TOT_":"
+ ;I $D(SAVXML) S SAVXML=SAVXML_$G(SAVEL)
+ ;E  W SAVEL
+ ;K SAVEL
+MSG ; *** Messages  ****
+ S XAR=$P(GR3,":",7)
+ S XMSG=""
+ I XAR'="" S XMSG=$P($G(^ARG(XAR)),":",7)
+ S:XMSG="" XMSG=$P(GR3,":",8)
+ S:MSGNO=0 MSGNO=1 S:TEZ<1 TEZ=1
+ I MSGNO'=9,$D(^MSCG("STP","MAXMSGNO")),MSGNO>$G(^MSCG("STP","MAXMSGNO")) S MSGNO=$G(^MSCG("STP","MAXMSGNO"))
+ I XMSG]"",$D(^MGG(TEZ,XMSG,MSGNO)) S MSG=^MGG(TEZ,XMSG,MSGNO)
+ E  S MSG=""
+ F I=3:1:6 I $P(MSG,":",I)'="" D WR("MESSAGE"_(I-2),$P(MSG,":",I))
+ S STCTR=STCTR+1
+ Q
+ ;OLD
+OMSG ; *** Messages  ****
+ I $D(^MGG(TEZ,$P(GR3,":",8),MSGNO)) S MSG=^MGG(TEZ,$P(GR3,":",8),MSGNO)
+ E  S MSG=""
+ F I=3:1:6 I $P(MSG,":",I)'="" D WR("MESSAGE"_(I-2),$P(MSG,":",I))
+ S STCTR=STCTR+1
+ Q
+PGE D WR("<STATEMENT>","",1)
+ D WR("STATEMENTDATE",TODAY)
+ S PAT=$P(^PTG(K,PATNO),":",3) S:PAT="" PAT=$P(GR1,":",7) S PTNM=$P(PAT,",",2),PATD=^PTG(K,PATNO)
+ I $D(^MSCG("STPXML6","FIRSTNM")) S PAT=$$RM($P(PAT,",",2))_" "_$$RM($P(PAT,",",1)),T=$P(GR1,":",7),$P(GR1,":",7)=$$RM($P(T,",",2))_" "_$$RM($P(T,",",1))
+ S ACCT=K+(TEZ*100000000)_" - "_PATNO_" / "_$P(GR3,":",7) S:$D(^MSCG("STPXML6","ACCT")) ACCT=K S:$D(^MSCG("STPXML6","MRN")) ACCT=$P(^PTG(K,PATNO),":",11)  ; was 1000000
+ I $D(^MSCG("STPXML","DIR")) S ACCT=$P($G(^PRMG(TEZ,3)),":",1),ACCT=ACCT_" "_TEZ_" "_K_"/"_$P(GR3,":",7)
+ I $D(^MSCG("CRCARD","TSYS")) S ACCT="E"_TEZ_"-A"_K_"-P"_PATNO
+ D WR("ACCOUNTNUMBER",ACCT)
+ S:$P(PRM,":",4)="" $P(PRM,":",4)=$P(PRM,":",5),$P(PRM,":",5)=""
+ I $D(^MSCG("STPXML","NM",EZ)) S $P(PRM,":",2)=^(EZ)
+ I $D(^MSCG("STPXML","ADD",EZ)) S $P(PRM,":",3)=^(EZ),$P(PRM,":",4)=""
+ I $D(^MSCG("STPXML","CTST",EZ)) S $P(PRM,":",5)=^(EZ)
+ I $D(^MSCG("STPXML","PH",EZ)) S $P(PRM,":",6)=^(EZ)
+ D:PADDR="Y" WR("PRACTICEADD1",$P(PRM,":",2))
+ D:PADDR="Y" WR("PRACTICEADD2",$P(PRM,":",3))
+ ;I $P(PRM,":",4)'="" D:PADDR="Y" WR("PRACTICEADD3",$P(PRM,":",4))
+ D:PADDR="Y" WR("PRACTICEADD3",$P(PRM,":",4))
+ D:PADDR="Y" WR("PRACTICEADD4",$P(PRM,":",5))
+ D WR("PRACTICEPHONE",$P(PRM,":",6))
+ ;I 'NPAT D WR("PATIENT",PAT)
+ D WR("PATIENTNAME",PAT)
+ I '$D(^MSCG("STPXML6","NOTAXID")) D WR("TAXID",$P(PRM,":",8))
+ I MULT,III>1 S PAT=$P($G(^ATG(RFATT)),":",2),$P(GR1,":",7)=PAT
+ D:PTGR'="P" WR("GUARANTORNAME",$P(GR1,":",7)) D:PTGR="P" WR("GUARANTORNAME",PAT)
+ D WR("GUARANTORADD1",$S(PTGR="P"&($P(PATD,":",4)'=""):$P(PATD,":",4),1:$P(GR1,":",8)))
+ I PTGR'="P" D
+ . S ADDR1=$P(GR1,":",9),ZIP=$E($P(GR1,":",11),1,5) S:$E($P(GR1,":",11),6,9)'="" ZIP=ZIP_"-"_$E($P(GR1,":",11),6,9)
+ . S ADDR2=$P(GR1,":",10)_"  "_ZIP
+ I PTGR="P" D
+ . I $P(PATD,":",4)="" S $P(PATD,":",5)=$P(GR1,":",9),$P(PATD,":",6)=$P(GR1,":",10),$P(PATD,":",7)=$P(GR1,":",11)
+ . S ADDR1=$P(PATD,":",5),ZIP=$E($P(PATD,":",7),1,5) S:$E($P(PATD,":",7),6,9)'="" ZIP=ZIP_"-"_$E($P(PATD,":",7),6,9)
+ . S ADDR2=$P(PATD,":",6)_"  "_ZIP
+ I MULT,III>1 D
+ . S T=$G(^ATG(RFATT)) Q:T=""
+ . S ADDR1=$P(T,":",3),ZIP=$P(T,":",6) S:$E($P(T,":",6),6,9)'="" ZIP=ZIP_"-"_$E($P(T,":",6),6,9)
+ . S ADDR2=$P(T,":",5)_"  "_ZIP,ATTPH=$P(T,":",7),$P(PATD,":",8)=ATTPH,$P(GR1,":",12)=ATTPH
+ S:$TR(ADDR1," ","")="" ADDR1=ADDR2,ADDR2=""
+ D WR("GUARANTORADD2",ADDR1)
+ D WR("GUARANTORADD3",ADDR2)
+ D WR("GUARANTORPHONE",$S(PTGR="P"&($P(PATD,":",8)'=""):$P(PATD,":",8),1:$P(GR1,":",12)))
+ ;;S T=K+(TEZ*100000000)_" - "_PATNO_" / "_$P(GR3,":",7) S:$D(^MSCG("STPXML6","ACCT")) T=K 
+ D WR("ACCOUNTNUMBER",ACCT) ; was 1000000
+ I '$D(^MSCG("CRCARD","TSYS_PATIENT_URL")) D WR("STATEMENTMESSAGE",TPMSG)
+ I $D(^MSCG("CRCARD","TSYS_PATIENT_URL")) S T="Visit "_$g(^MSCG("CRCARD","TSYS_PATIENT_URL"))_" to pay online"  D WR("STATEMENTMESSAGE",T)
+ D WR("OTHERINFO",$P(PRM,":",7)),WR("OTHERINFO1",$P(PRM,":",13))
+ ;S SAVEL=""
+ Q
+ALN ;ALIGNMENT
+ ;D SFTP^ST1(EZ)
+ ;;D WR("<ADSXML>","",1)
+ Q
+PAY S (SGN,PAY)=0,PAY=+$P(S,":",10)
+ S CLSS=$P(S,":",16) S:F1[CLSS SGN=-1 S:F2[CLSS SGN=1
+ Q:'SGN
+ Q:PAY=0  S AMT=PAY*SGN
+ Q
+WR(FIELD,DATA,TAG) ;
+ ; I TAG=1 no data.
+ S TAG=$G(TAG),WRD="" S:$G(XMLCT)="" XMLCT=1 S:$G(SAVXML)="" SAVXML=""
+ ;I TAG W FIELD Q
+ ;W "<",FIELD,">",$TR(DATA,"""'><&",""),"</",FIELD,">"
+ I TAG S WRD=FIELD
+ I 'TAG S WRD="<"_FIELD_">"_$TR(DATA,"""'><&","")_"</"_FIELD_">"
+ ;I $D(SAVEL) S:$L(SAVEL)<30000 SAVEL=SAVEL_WRD ;Q
+ ;I $D(SAVXML) S:$L(SAVXML)<30000 SAVXML=SAVXML_WRD S:($L(SAVXML)>29999!(SAVXML2'=""))&($L(SAVXML2)<29999) SAVXML2=SAVXML2_WRD S:($L(SAVXML2)>29999!(SAVXML3'=""))&($L(SAVXML3)<29999) SAVXML3=SAVXML3_WRD ;Q
+ I XMLCT=1 S:$L(SAVXML)<30000 SAVXML=SAVXML_WRD S:$L(SAVXML)>29999 XMLCT=XMLCT+1
+ E  Q:XMLCT>9  S T=@("SAVXML"_XMLCT) S:$L(T)<30000 @("SAVXML"_XMLCT)=T_WRD S:$L(@("SAVXML"_XMLCT))>29999 XMLCT=XMLCT+1 S:XMLCT>9 @("SAVXML"_XMLCT)=T_"</STATEMENT>"
+ I FIELD'="TRANSNUM" W WRD
+ Q
+.
+RM(T) ;Remove Leading and Trailing Spaces.
+ N I,J F I=1:1 Q:$E(T,I)'=" "
+ F J=$L(T):-1:1 Q:$E(T,J)'=" "
+ Q $E(T,I,J)
+REFR I $D(PROVIDER),PROVIDER'="",$D(^RFG(PROVIDER)) D WR("REFFERINGPHYSICIAN",$P(^RFG(PROVIDER),":",2))
+ Q
+FMT(money)   ; Format money
+	i '$g(moneySw) q $J(money/100,0,2)  ; old format
+	s sign=$s(money["-":"-",1:"")
+	s money=$tr(money,"-","")
+	q $j(sign_"$"_$FNUMBER(money/100,",",2),14)   ; new format
+	q
+combine	 ;
+     k ^newARRY($J)
+     // Note that we are currently ignoring type=4 which are undistributed amounts. 
+     s TEZ=$G(TEZ) s:TEZ="" TEZ=1
+     s t="^ARRY("_$J_")"
+     s srvDate=""
+     f  {
+	      s t=$q(@t) 
+	      q:t=""
+	      q:$qs(t,1)'=$J  
+	      s job=$qs(t,1)
+	      s tr=$qs(t,2)
+	      s type=$qs(t,3)
+	      s pTr=$qs(t,4)
+	      i type=1 s srvDate=$p(@t,":",1)
+	      i srvDate="" continue   ; there was no valid charge before this payment
+	      s s=""
+	      i type=1 {
+		      s tr=$qs(t,2)
+		      s TrRec=^TRG(TEZ,tr)
+		      s bal=$p(TrRec,":",9)-$p(TrRec,":",10)
+		      s amt=$p(@t,":",5)
+		     
+		      i $d(^newARRY($J,srvDate,type,"P")) {
+			      s s=^newARRY($J,srvDate,type,"P")
+			      s $p(s,":",1)=$p(s,":",1)+amt 
+			      s $p(s,":",2)=$p(s,":",2)+bal
+			      s ^newARRY($J,srvDate,type,"P")=s
+			      ; Totals for placing in ^TKSTP
+			      s s1=^newARRY($J,"ZTOT",9,"ZTOT")
+			      s ^newARRY($J,"ZTOT",9,"ZTOT")=s1_":"_"L"_","_tr_","_amt_","_bal
+			      continue
+		      }
+		      else {
+		          s ^newARRY($J,srvDate,type,"P")=amt_":"_bal
+		          s s1=$G(^newARRY($J,"ZTOT",9,"ZTOT"))
+		          s:s1'="" s1=s1_":"
+		          s ^newARRY($J,"ZTOT",9,"ZTOT")=s1_"L"_","_tr_","_amt_","_bal
+			      continue
+		      }
+	      }
+	      i type=2 {
+			   ; default is by description @t second field
+			   ; otherwise the sort is by the financial type - INP, PRP etc. 
+		      s finType=$s(type=1!(type=3):"",1:$p($g(^TRG(TEZ,pTr)),":",16))
+		      s finIdx=$s($d(^MSCG("STP","ByFinType")):finType,1:$p(@t,":",2)) 		      
+		      s amt=$p(@t,":",3)
+		      s $p(s,":",2)=finType
+		      i $d(^newARRY($J,srvDate,type,finIdx)) {
+			      s s=^newARRY($J,srvDate,type,finIdx)
+			      s $p(s,":",1)=$p(s,":",1)+amt 
+			      s ^newARRY($J,srvDate,type,finIdx)=s
+			      continue
+		      }
+		      else {
+			      s $p(s,":",1)=amt
+		          s ^newARRY($J,srvDate,type,finIdx)=s
+			     continue
+		      }
+	      }
+	      i type=3{
+		      s msg=$p(@t,":",1)
+		      q:msg=""
+		      i $d(^newARRY($J,srvDate,msg)) {
+				  ; already have this message for this srvDate   
+			      continue
+		      }
+		      else {
+		          s ^newARRY($J,srvDate,type,msg)=""
+			      continue
+		      }
+	      }
+	      
+	     i type=4{   ; Unapplied money
+		      s finIdx=$s($d(^MSCG("STP","ByFinType")):finType,1:$p(@t,":",2)) 
+		      s finType=$s(type=1!(type=3):"",1:$p($g(^TRG(TEZ,pTr)),":",16))
+		      s amt=$p(@t,":",3)
+		      s $p(s,":",2)=finType
+		      s uSrvDate=$p(@t,":",1)
+		      i $d(^newARRY($J,uSrvDate,type,finIdx)) {
+			      s s=^newARRY($J,srvDate,type,finIdx)
+			      s $p(s,":",1)=$p(s,":",1)+amt 
+			      s ^newARRY($J,uSrvDate,type,finIdx)=s
+			      continue
+		      }
+		      else {
+			      s $p(s,":",1)=amt
+		          s ^newARRY($J,uSrvDate,type,finIdx)=s
+			     continue
+		      }
+	      }
+   
+     }
+ 
+
+T^INT^1^64968,50860^0
+T ; Creates a Task class and tests. ;2017-06-08 11:57:51
+   d new
+ 
+   
+   q
+   ; Creates a new task based on the basic parameters passed in 
+n(StartDate="01012015",AssignedTo="NoOne",Acct="")
+    s task=##class(Adsc.MedicsPremier.Task).%New()
+    s task.StartDate=StartDate
+    s task.AssignedTo=AssignedTo
+    s task.Account = Acct
+    d save
+    q
+ 
+new	; Creates a new instance with default parameters. 
+	s task=##class(Adsc.MedicsPremier.Task).%New()
+    s task.StartDate="01122008"
+    s task.AssignedTo="Dan"
+    s task.Account = 100
+    d save
+    q
+    
+save s result=task.%Save()
+    d disRes(result)
+    q
+getError(res)
+	q ##class(%SYSTEM.Status).GetErrorText(res)    
+  
+disRes(res)   ; Display the results of the save 
+     w "Result: ",!
+     i $l(res)<10 w res,! q
+	
+     d ##class(%SYSTEM.Status).DisplayError(res)
+     q
+buildIndices(className)  ; Rebuild All Indices
+ 	SET sc = ##class(className).%BuildIndices()
+ 	q
+get(id)  ; Get a class by its ID. 
+	q:id<1
+    s task=##class(Adsc.MedicsPremier.Task).%OpenId(id)
+    q task
+    q
+query() ;
+  k
+  SET rs=##class(%ResultSet).%New()
+  SET rs.ClassName="Adsc.MedicsPremier.Task"
+  set rs.QueryName="xxx"
+  DO rs.Execute()
+  DO rs.%Display()
+  q
+	
+query1()
+	k 
+  SET myquery = "Select * from Adsc_MedicsPremier.Task where Id=20 OR Id=1"
+  SET tStatement = ##class(%SQL.Statement).%New()
+  SET qStatus = tStatement.%Prepare(myquery)
+   IF qStatus'=1 { WRITE "%Prepare failed",$System.Status.DisplayError(qStatus) QUIT}
+  SET rset = tStatement.%Execute()
+  ;DO rset.%Display()
+  WRITE !,"End of data",!!!!
+  
+  /*s foo = rset.%NextResult()
+  while foo 
+  {
+	  zw foo
+	  
+	  s foo = rset.%NextResult()
+  }*/
+  
+  ;s foo = rset.%CurrentResult
+  ;w foo.Account,?20,foo.StartDate,?40,foo.AssignedTo,!
+  
+  while rset.%Next()
+  {
+	  s foo = rset.%CurrentResult
+	  
+		w foo.Account,?20,foo.StartDate,?40,foo.AssignedTo,!
+  }
+  
+  q
+x	;
+	s t=##class(Adsc.MedicsPremier.TaskSearch).%New()
+	s ok=t.Select()
+	b  s obj=t.Next()
+	zw obj
+	q
+resave ;
+	; During development this is to go over each task and resave them
+	s t=""
+	f  s t=$o(^TKAATASKG("TASKS",t)) q:t=""  d 
+	.s taskObj=##class(Adsc.MedicsPremier.Task).%OpenId(t)
+	.s result=taskObj.Save()  
+	.w t,?20,"Id=",taskObj.Id,!   r ggg	
+	.i result'=1 w t,?10,result,!   r ttt
+	q
+t1 ;
+	s taskObj=##class(Adsc.MedicsPremier.Task).%New()
+	s taskObj.StartDate = "20170501"
+	s actionObj=##class(Adsc.MedicsPremier.Action).%New()
+	s actionObj.Note = "This is the first action note"
+	s actionObj.ActionDate = 20170701
+	s actionObj.TheTask=taskObj
+	d taskObj.Save()
+	q
+delete(query)
+		b  
+		;; s t="SELECT * FROM Adsc_MedicsPremier.Task as c where c.Today='20170407'"
+	 	;;i query="" s query="SELECT * FROM Adsc_MedicsPremier.Task as c where c.Status='New'"
+ 		s rset=##class(Adsc.MedicsPremier.TaskSearch).query(query)
+		w query,!  
+		b
+		s c=0
+	while rset.%Next(){	
+		 	s Obj = rset.%CurrentResult
+	 		s c=c+1 
+	 	 	;;s result=##class(Adsc.MedicsPremier.Task).%DeleteId($Property(Obj,"ID1"))
+	 	 	b  s result=##class(Adsc.MedicsPremier.TaskLog).%DeleteId($Property(Obj,"ID"))
+	 	 	
+ 		 }
+ 		 w c,"  were deleted",!
+		q
+	
+	
+getData(Model,myquery,statType)
+	{
+			; statType is the type of statistic we are trying to find. 
+			; The sql search pulls the necessary data and then through indirection we retrieve the field value
+			; For example if we are looking for Status we set "Obj.Status" and then through indirection find the field value. 
+		s rset=##class(Adsc.MedicsPremier.TaskSearch).query(myquery)
+		s field="Obj."_statType
+   		s html=""   
+    	s c=0 
+    	while rset.%Next(){	
+		 	s Obj = rset.%CurrentResult
+	 		s c=c+1  // Could you propery %ROWCOUNT
+	 		s html=html_"<tr><td>"
+	 		s html= html_$Property(Obj,statType)
+	 		s html=html_"</td><td>"
+			s html= html_Obj.totalCount 	 		
+			s html=html_"</td></tr>"
+ 		 }
+ 		s Model($ZCONVERT(statType,"L"))=html
+ 		 
+	}
+ 
+	
+log(ctr)		;
+		k ^GGG(ctr)
+		s ^GGG(ctr,"BODY")=$g(%("BODY")	)
+		s ^GGG(ctr,"RLC")=$G(RLC)
+		s ^GGG(ctr,"user")=$G(user)
+		s ^GGG(ctr,"ez")=$g(ez)
+		s ^GGG(ctr,"id")=$g(id)
+		m ^GGG(ctr,"Model")=Model
+		s ^GGG(ctr,"Source")=$g(Source)
+		s ^GGG(ctr,"FD")=$g(FD)
+		q
+getLog(ctr)   ;
+		s %("BODY")	= $g(^GGG(ctr,"BODY"))
+		s RLC=$G(^GGG(ctr,"RLC"))
+		s user=$g(^GGG(ctr,"user"))
+		s ez=$g(^GGG(ctr,"ez"))
+		m Model=^GGG(ctr,"Model")
+		s id=$g(^GGG(ctr,"id"))
+		s Source=$g(^GGG(ctr,"Source"))
+		s FD=$g(^GGG(ctr,"FD"))
+		q
+logF(ctr)		; Filter
+		k ^GGG(ctr)
+		s ^GGG(ctr,"BODY")=$g(%("BODY")	)
+		s ^GGG(ctr,"RLC")=$G(RLC)
+		s ^GGG(ctr,"user")=$G(user)
+		s ^GGG(ctr,"ez")=$g(ez)
+		s ^GGG(ctr,"id")=$g(id)
+		m ^GGG(ctr,"Model")=Model
+		s ^GGG(ctr,"Source")=$g(Source)
+		s ^GGG(ctr,"FD")=$g(FD)
+		m ^GGG(ctr,"filters")=filters
+		m ^GGG(ctr,"data")=data
+		q
+getLogF(ctr)   ; Filter
+		s %("BODY")	= $g(^GGG(ctr,"BODY"))
+		s RLC=$G(^GGG(ctr,"RLC"))
+		s user=$g(^GGG(ctr,"user"))
+		s ez=$g(^GGG(ctr,"ez"))
+		m Model=^GGG(ctr,"Model")
+		s id=$g(^GGG(ctr,"id"))
+		s Source=$g(^GGG(ctr,"Source"))
+		s FD=$g(^GGG(ctr,"FD"))
+		m filters = ^GGG(ctr,"filters")
+		m data=^GGG(ctr,"data")		
+		
+		q
+delCodes	;
+		m ^backup(+$h,"TASKCODES")=^TKAATASKG("CODES")
+		s t="^TKAATASKG(""CODES"")"
+		f  s t=$q(@t) q:t=""!($qs(t,1)'="CODES")  d
+		.w !,t,!
+		.r !,"Delete Yes or No: ",ans
+		.s ans=$ZCONVERT(ans,"U")
+		.i ans="Yes"!(ans="Y") k @t w !,"  *** Deleted  ***",!
+		d bldIdx
+		q
+bldIdx	SET sc = ##class(Adsc.MedicsPremier.ActionCodes).%BuildIndices()	
+   		SET sc = ##class(Adsc.MedicsPremier.PreDefinedTask).%BuildIndices()	
+		SET sc = ##class(Adsc.MedicsPremier.Task).%BuildIndices()	
+		SET sc = ##class(Adsc.MedicsPremier.GeneralCode).%BuildIndices()	
+		
+	q		
+findPorts ;
+	DO ##class(%SYS.Namespace).ListAll(.result) s t="" f  s t=$o(result(t)) q:t=""  i t'["OTHER" zn t  w t,"  ",$g(^TKVBUSER("PORT")),?20,$P($G(^PRMG(1,1)),":",2),! 
+	q
+ 
+chkCtrl(fix=0)
+	k ^ggG
+	s t="^RFG"
+	s ctr=0
+	w "RFG",!
+	f  s t=$q(@t) q:t=""  i @t[$c(0) w t,!  B  s ^ggG("REF",t)=""  s ctr=ctr+1   i fix b  s @t=$tr(@t,$c(0),"") b  
+	w !,"Found Referrals = ",ctr
+	s ctr=0
+	s t="^WRKFLW"
+	w !!,"WRKFLW",!
+	f  s t=$q(@t) q:t=""  i @t[$c(0) w t,!  s ^ggG("WRK",t)="" s ctr=ctr+1  i fix b  s @t=$tr(@t,$c(0),"")  b  
+	w !,"Found Workflow lines = ",ctr
+	;
+c1	s t="^TRG"
+	w !!,"TRG",!
+	f  s t=$q(@t) q:t=""  i @t[$c(0) w t,!  s ^ggG("TRG",t)="" s ctr=ctr+1  i fix b  s @t=$tr(@t,$c(0),"")  b  
+	w !,"Found TRG lines = ",ctr
+	q
+	
+	
+
+TKAAUTIL^INT^1^64742,42562^0
+TKAAUTIL ;Utility Routines ;2018-01-23 12:53:37;Apr 6 2015 ;AA
+ ; ADS Corp. Copyright
+ q 
+ ;
+ ; S ^TKAAUTIL("REF","RAW")="^TKAAUTIL(""DEF"",""RAW"")"
+ ; S ^TKAAUTIL("DROPBOX")="C:\USERS\AHMED.A\DROPBOX\"
+ ;
+ ;
+JSON(Array) 					d json^TKAAUTIL2(Array) q
+XML(Array) 						d xml^TKAAUTIL3(Array) q
+REPLACE(String,Value,NewValue) 	q $$replace^TKAAUTIL5(String,Value,NewValue)
+GETFILES(Array)					d gf^TKAAUTIL13(Array) q
+CSVTOPIPE(String)				q $$genparse^TKAAUTIL5(String,",","""","|")
+CSVTOTAB(File)					q $$genparse^TKAAUTIL5(String,",","""",$c(9))
+GENPARSE(String,Del,Qual,NDel)	q $$genparse^TKAAUTIL5(String,Del,Qual,NDel)
+LOADFILE(Array)					d lf^TKAAUTIL5(Array) q
+MERGE(String,Value)				q $$merge^TKAAUTIL5(String,Value)
+UP(String)						q $$up^TKAAUTIL4(String)
+LO(String)						q $$lo^TKAAUTIL4(String)
+API								d API^TKAAUTIL7 q ;tkweb
+TIME(H)							q $$time^TKAAUTIL5($g(H))
+BUILDRAW						d BuildRawDefs^TKAAUTIL6 q
+CSV2EXCEL(File)					q $$CSVTOEXCEL^TKAAUTIL10(FILE)
+TRIM(STR)						q $$TRIM^TKAAUTIL4(STR)
+GENRAW(Array,Name) 				d GenerateRaw^TKAAUTIL6(Array,Name) q
+NESTARRAY(FArray,HArray)		q $$nest^TKAAUTIL5(FArray,HArray)
+PROCESSFULLARRAY(Array,Profile) q $$process^TKAAUTIL5(Array,Profile)
+AAWEB							d StartServer^TKAAUTIL14 q
+HTML(String,Array)				q $$html^TKAAUTIL15(String,Array) q
+ADDSUB(String,Sub)	   			q $$as^TKAAUTIL15(String,Sub)
+PARSESINGLE(Array,Token)		q $$p^TKAAUTIL15(Array,Token) ; e.g. Array=^App   Token={{COnfig.Data}}
+STARTMODULE()					q $$StartModule^TKAAUTIL13()
+GETMODULEREF(String)			q $$GetModuleRef^TKAAUTIL13(String)
+ERRORHANDLER					d ErrorHandler^TKAAUTIL16 q
+EncodeJWT(Payload,Secret)		q $$EncodeJWT^TKAAUTIL20(Payload,Secret)
+VerifyJWT(Payload,Secret)		q $$VerifyJWT^TKAAUTIL20(Payload,Secret)
+DecodeJWT(Payload,Secret)		q $$DecodeJWT^TKAAUTIL20(Payload,Secret)
+StartModule()					q $$StartModule^TKAAUTIL13()
+RenderTemplate(r,i,o)			d RenderTemplate^TKAAUTIL13(r,.i,.o) q
+RenderHTML(o)					d shtml^TKAAUTIL16(o)
+POST							d POST^TKAAUTIL18 q				 ;tkweb
+LOGIN							d LOGIN^TKAAUTIL18 q 			 ;tkweb
+RENDERTEMPLATE					d rendertemplate^TKAAUTIL19 	 ;tkweb
+SENDHHTPREQ(Host,Loc,Type,Data)	d SendHTTP^TKAAUTIL20(a,l,t,d)	 ;tkweb
+DataTable(TABLE)		 		d DataTable^TKAAUTIL21(.TABLE) q
+EscapeHTML(S)					q $$prs^TKAAWEB(s)
+StrJson(s)						q $$strjson^TKAAUTIL26(s)
+ParseJson(Str,Out)				d ParseJson^TKAAUTIL28(Str,.Out) q
+UTC()							q $$UTC^TKAAUTIL32() 
+GETJSON							d GETJSON^TKAAUTIL33 q  ;tkweb
+POLICYCHECK(K,K1)				Q $$POLICYCHECK^TKAAUTIL34(K,K1)
+TJSON(%global,%result,%error)	D ENCODE^TKAAUTIL29(%global,%result,%error) q
+FJSON(%json,%result,%error)		D DECODE^TKAAUTIL29(%json,%result,%error) q
+ ;
+ ;
+UPDATE
+	N Module
+	F Module="TKAATASK","TKAARECON","TKAAREJECT","TKAAEDI","TKAAAWM","TKAAPTA" D
+	. D Update^TKAAWEB(Module) 	H 0.5
+	Q
+	;
+	;
+
+TKVB^INT^0^65016,48910.057865^0
+TKVB ; ADS LINK WITH VB;2016-12-01 09:36:23;09NOV2016  11:29;;Tue, 06 Aug 
+ ; ADS Corp. Copyright
+ ;
+M3 S ADDR=$ZDEV($I),OS="M3"
+ ;
+cont S $ZT=$S($ZV["Cache":"*",1:"")_"LOG^TKVBERR",LOG=1
+ S CR=$C(13,10),TMO=5,THANDLE=$G(^TKVBC("THANDLE"))
+ I $ZV["Cache" D
+ . I $System.Version.GetNumber()<5 S x=$$GetCSLic^%LICENSE Q
+ . S Str=$ZU(111,0),UserId=$a(Str,1)_"."_$a(Str,2)_"."_$a(Str,3)_"."_$a(Str,4),x=$System.License.Login(UserId)
+ G PRO4
+ ;
+PROCESS K (ADDR,CR,TMO,OS,TCP,CON,TRACE,LOG)
+PRO4 R X#5:TMO S C=$S(OS="M3":$ZC,1:$ZA#8>3),L=X S:TMO=5 TMO=31
+ G ERRD:C,ERRT:'$T,PROCESS:X=""
+ ;;d setVars^FUNCT4
+ // Goes to the relative labels based on the value in X - 
+.
+ s tt="Command: "_$G(COMMAND)_" Call Type: "_X
+ d log^FUNCT4("TKVB Called :",tt)
+ I X'?5N G ADS^TKVBDI:$A(X)=1,IO^TKVBUT3:$E(X,1,3)=$C(255,251,24),ODBC:$A(X,3)=0,HL7:$A(X)=9,HL7:$A(X)=11,WEB:X["OPTIO",WEB:X["GET ",WEB:X["POST",MAIL:X["HELO",MAIL:X["EHLO" I X?4N1AC R X#($E(L,1,4)-1):TMO S X=$E(L,5)_X G PRO5
+ I L=99999 D  G ERRD:C,ERRT:'$T,PROCESS:X=""
+ . F J=0:1:99 D  S C=$S(OS="M3":$ZC,1:$ZA#8>3) Q:C  Q:'$T
+ .. I J=0 R X#7:TMO S L=X,Bc(0)=L Q
+ .. S A=30000 S:L'>30000 A=L S L=L-A I J=1 R X#A:TMO Q
+ .. R Bc(J-1)#A:TMO
+ R X#+L:TMO
+PRO5 S C=$S(OS="M3":$ZC,1:$ZA#8>3) G:C ERRD G:'$T ERRT G PROCESS:X=""
+ D SETUPXX I DEZ]"",$G(TMO(5))="" S DEZ=$G(^CUSTDB(DEZ),DEZ),TMO(5)=DEZ I DEZ]"" ZN DEZ S THANDLE=$G(^TKVBC("THANDLE")) G PRO7^TKVB
+PRO7 I $P(X,"|",2)'["POS" S CNT=$G(^TKVBC("COUNT"))+1,^("COUNT")=CNT S:$G(LOG) ^TKVBC("LOG",+$H,$P($H,",",2),CNT)=$E(X,1,500)_"`"_$G(ADDR)
+ G PRO6
+PRO1 D SETUPXX
+PRO6 ; I HANDLE,$G(THANDLE)>HANDLE D FORCEOUT^TKVBUT ; LOGOUT CONTROL HERE
+ I $P(X,"|",2)="GET" G GET
+ I $P(X,"|",2)="GETP" S PC=1 D GET Q:'$D(TMO)  G PRO2
+ I $P(X,"|",2)="POS" G GET
+ I $P(X,"|",2)="POSP" S PC=1 D GET Q:'$D(TMO)  G PRO2
+ I $P(X,"|",2)="HB" S B="" G GETE
+ I $P(X,"|",2)="SET" S B="" G SET
+ I $P(X,"|",2)="SETP" S PC=1 D SET Q:'$D(TMO)  K Bc G PRO2
+ I $P(X,"|",2)="SETL" K:'$G(Bc) ^TKVBT($J) S Bc=$G(Bc)+1,Bc(Bc)="^TKVBT($J,"_Bc_")",@Bc(Bc)=$P(X,"|",3,9999),B="" D GETE G PRO4
+ Q:'$D(TMO)  S TM=$H,^TKVBC("LOG",+TM,$P(TM,",",2),CNT,0)=X
+ S B="ERROR: UNKNOWN COMMAND" G GETE
+PRO2 I $D(TMO)>1 G PROCESS
+ D PRO3 G PROCESS
+PRO3 I $G(USER)]"" S TMO=$G(^TKVBUSER(USER,"TIMEOUT"),11),TMO(0)=1 I $D(^("HANG")) S B=^("HANG") S:B>0 TMO(2)=+B S:$P(B,":",2)>0 TMO(3)=$P(B,":",2)
+ Q
+MAIL U:OS="M11" 0:(::"AS":$C(13)) G cont^TKVBTER5
+	;
+WEB U:OS="M11" 0:(::"AS":$C(10))
+ F  Q:$TR(X,$C(13))[$C(10,10)  Q:C  R Y:4 S X=X_Y X $S("MSM,M3"[OS:"S C=$ZC",OS="M11":"S C=$ZA#8>3 S:$ZB=$C(10) X=X_$ZB",1:"S C=0")
+ S LOG=0,(CON,CNT)=$G(^TKVBC("COUNT"))+1,^("COUNT")=CNT 
+ S:X'["getcharts" ^TKVBC("LOG",+$H,$P($H,",",2),CNT*$J)=$E(X,1,32000)_"`"_$G(ADDR) S TRACE=$G(^MSCG("WEB-TRACE")),TCP=$S('$D(TCP):0,1:TCP),ADDR=$P($P(ADDR,":"),"~") 
+ G cont^TKWEBH
+ODBC S start=1 G cont^TKSQLC
+HL7 G HL7^TKVBTER3
+ ;
+ERRD Q:C["10054"  S B=C_" ERROR" G SENDERR
+ERRT H:$P($G(ADDR),":")=""
+ I $D(^TKVBUSER("PERSISTENT",$P(ADDR,":"))) G PRO4
+ ; I $D(THANDLE),'$D(PREMIER) G cont^TKVBTER5
+ D SCHED^TKVBW5D
+ H
+ERROR S B=$ZE G SENDERR
+SENDERR S ^TKVBC("ERROR",$H)=B_"`"_$G(X)_$G(L),B="|ERROR - "_B_"||" D OUT G END
+ H
+ ;
+GET I XX]"" s ^AI(100)=XX  G @XX:$T(@XX)]"",^TKVBLK
+GETCONT S B="ERROR: UNKNOWN COMMAND" G GETE
+GETM ;;if $g(webCall) d @webProgram q
+ I $D(NOWRITE) D:$L(NOWRITE)>1 @NOWRITE Q
+ S B="|OK||"_B G OUT2
+ Q
+GETE Q:$D(NOWRITE)  S B="|OK||"_B D OUT S B="|END|"_$G(POS) D OUT W ! K POS Q
+END S B="|END|"_$G(POS) D OUT W ! Q
+OUT W HANDLE2,$E(100000+$L(B),2,6),B Q
+OUT2 W HANDLE2,$E(100000+$L(B),2,6) F j=1:1:$L(B)\40000+1 W $E(B,j-1*40000+1,j*40000)
+ Q
+ ;
+ ;
+ADMIN G ADMIN^TKVBUT2
+AI1 D:0 AI1SET^TKVBUT1 D DEMO^TKVBUT1 S B=$TR(B,":",$C(9)) G GETE
+AICD G CD^TKVBAI1
+AIPRT G AIPRT^TKVBAI1
+AIDATA s ^AI(101)=1 G AIDATA^TKVBAI
+AIDETAIL G DETAIL^TKVBAI1
+AINEXT D AINP(1) G GETE
+AIPREV D AINP(-1) G GETE
+AICLS G AICOLS^TKVBAI4
+AIFILT G AIFILT^TKVBAI4
+AIIF G AIIF^TKVBAI4
+AISTS G AISETS^TKVBAI4
+AITOP G AITOP^TKVBAI1
+AITP G AITOP^TKVBAI5
+AIVIEW G GETVIEW^TKVBAI1
+AIVW G GETVIEW^TKVBAI1
+AOVAL G AOVAL^TKVBCODE
+APP G APP^TKVBAS6
+ASDATA G ASDATA^TKVBAS
+ASCODE G ASCODE^TKVBAS6
+ASPAT G ASPAT^TKVBAS3
+ASPC G ASPC^TKVBAS3
+AUDIO G AUDIO^TKVBTRAN
+AUTOPOST G AUTOPOST^TKVBPO4
+CALENDAR G CALENDAR^TKVBAS
+BILLFUNC G BILLFUNCTION^TKVBUT4
+BLK G BLK^TKVBAS6
+BLOCKINI G BLOCKI^TKVBAS6
+CALLRTN G CALLRTN^TKVBUT4
+CANCEL G CANCEL^TKVBAS6
+CCARD G CCARD^TKVBCCTR
+CCRDT G CCRDT^TKVBCCTR
+CHIRO G CHIRO^TKVBCOD1
+CCTRANS G CCTRANS^TKVBCOD1
+CERROR G CERROR^TKVBUT3
+CHK G CHK^TKVBCLM
+CHKCMD G CHKCMD^TKVBUT3
+CHKTRS G GETRELTRANS^TKVBUT5
+CLM G CLM^TKVBCLM
+CLMDEF G CLMDEF^TKVBCLM
+CLMSTS G CLMSTS^TKVBCOD3
+CLOSE S $ZT="CLOSEERR^TKVB" S OPZ=USER,TKVB=1 D ^CLOSE S B="1|Close has completed." G GETE
+CLOSEERR S B="0|Close has received the following error.|"_$ZE G GETE
+CODE S OP=1 G START^TKVBCODE
+CODE1 S OP=0 G START^TKVBCODE
+CODELIST G CODELIST^TKVBCODE
+CODEDATA G CODEDATA^TKVBUT2
+COLOR G COLOR^TKVBUT
+COLAI G COLAI^TKVBUT1
+COPAY G COPAY^TKVBCODE
+COPAYY G COPAYY^TKVBCODE
+COPAYLST G COPAYLST^TKVBCODE
+CRYSTAL G CRYSTAL^TKVBUT3
+ ; DATETM   S B=$ZD(+$H)_","_$ztime G GETE
+CUSTFORM G CUSTFORM^TKVBUT1
+DEMO D DEMO^TKVBUT1 G:B="Record Not Found" GETE G DEMO^TKVBDM
+DEMODATA G DEMODATA^TKVBDM3
+DEMOENT G DEMOENT^TKVBDM3
+DEMOFORMS G END
+DEMOINIT G DEMOINIT^TKVBDM1
+DEMOSSN G DEMOSSN^TKVBDM3
+DEMOREL G DEMOREL^TKVBDM3
+DEMOTRN S OK=$$TRNCHK^TKVBDM1($P(X,"|",4),1) Q
+DEMOXML G DEMOXML^TKVBW3
+DG10 S DGD=$G(^ICD10DT,63826) S B=$S((+$H)<DGD:0,1:1) G GETE
+DGLG G DGLG^TKVBW6U
+DGVAL G DGVAL^TKVBCODE
+DIR G DIR^TKVBUT5
+DMDF G DMDF^TKVBCOD1
+DUPPAT G DUPPAT^TKVBAS7
+EDI G ^TKVBEDI
+EFORM G EFORM^TKVBUT2
+ELG G ELG^TKVBCOD3
+ELGINS G ELGINS^TKVBCOD3
+ELGMOV G ELGMOV^TKVBCOD3
+ELGPAYR G ELGPAYR^TKVBCOD3
+ELGRESP G ELGRESP^TKVBCOD3
+ELGSUB G ELGSUB^TKVBCOD3
+XELAP G ^XELAP9
+XELLS G ^XELLS9
+XELRS G ^XELRS9
+XRFLS G ^XRFLS9
+XRFRS G ^XRFRS9
+EISCP G EISCP^TKVBUT2
+EMPF S B="" S:P1]"" B=$G(^EMPG(P1))
+ S CITY=$P($P(B,":",4),","),STATE=$P($P(B,":",4),",",2)
+ I STATE="" S STATE="    "
+ S B=$TR($P(B,":",1,3)_":"_CITY_":"_STATE_":"_$P(B,":",5,11),":",$C(9))
+ G GETE
+ENTANES S ENT=$P(X,"|",4),B=0 S:ENT B=$P(^PRMG(ENT,1),":",16)="Y" G GETE
+ENTDESC S B=$S(P1:$P($G(^PRMG(+P1,1)),":",2),1:"")
+ I $G(^TKVBUSER("LICENSE","POSTDT")) S TMP=$O(^POSTDT(""),-1) I TMP]"",'$P(^(TMP),":",3) S DT=$$DATE^POSTDT(),DT=$$DG^IDATE(DT),B=B_":(Post Date "_$E(DT,5,6)_"/"_$E(DT,7,8)_"/"_$E(DT,3,4)_")"
+ G GETE
+ENTLIST S B="",USER=$TR($P(X,$C(9)),LC,UP)
+ I USER="" Q:$D(INTERNAL)  G GETE
+ S DATA=$G(^OPG(USER)),INEX=$P(DATA,":",4)
+ S DATA=":"_$P(DATA,":",13,999)_":"
+ S ENT="",LAST=^PRMG("Z")-1 F  S ENT=$O(^PRMG(ENT)) Q:'ENT!(ENT>LAST)  D
+ . S TMP=":"_ENT_":"
+ . I INEX="E",DATA[TMP Q
+ . I INEX="I",DATA'[TMP Q
+ . I $D(INTERNAL) S INTERNAL(ENT)="" Q
+ . S B=B_ENT_$C(9)_$P($G(^PRMG(ENT,1)),":",2)_$C(230)
+ Q:$D(INTERNAL)  G GETE
+EOBTR D EOBTR^TKVBCOD1 G GETE
+EXCEL G GETEXCEL^TKVBRP
+EXIST G EXIST^TKVBUT
+FAX G GETFAX^TKVBTERP
+FEE1 G FEE1^TKVBCODE
+FILE G FILE^TKVBUT
+FILEEXIS S B=$S($G(^MSCG("STPXML","SUBDIR"))]""&($G(^TKTVB(+HANDLE,"REPORT","STP"))):0,1:$$EXIST^DFILE(P1)) G GETE
+FOLDERS G FOLDERS^TKVBUT3
+FLD G FLD^TKVBCODE
+FLTYP D FLTYP^TKVBCODE($P(X,"|",4),$P(X,"|",5)) Q
+FUNC G FUNC^TKVBUT4
+GRNT S B=$ZH G GETE
+GRNN S B=##class(Medics.Guarantor).GetNextGuarantor($P(X,"|",4)) G GETE
+ S B=$O(^GRG($P(X,"|",4))) G GETE
+GRND S O=##class(Medics.Guarantor).%OpenId($P(X,"|",4))
+ S B=O.GuarantorAccount_":"_O.GuarantorName G GETE
+ S T=^GRG($P(X,"|",4)),B=$P(T,":")_":"_$P(T,":",7) G GETE
+HANDLE S B=CNT G GETE
+HANG S B=$G(^TKVBUSER(USER,"HANG")) S:B="" B="0:0" G GETE
+ICONS G ICONS^TKVBWF1
+IFACE G IFACE^TKVBUT3
+IMAGE G IMAGE^TKVBW4
+IMGTR G GETRELIMGBYTR^TKVBUT5
+INIT D COLORX^TKVBUT S B=B_$C(0)_$G(^TKVBUSER(USER,"PREFS"))_$C(0)_$ZD(+$H)_" "_$$ZT($P($H,",",2))_$C(0)_$S(P1:$P($G(^PRMG(+P1,1)),":",2),1:"")_$C(0) D LISTX^TKVBCODE S B=B_$C(0)_"END" G GETE
+INFO G INFO^TKVBUT2
+INSCOD G INSCOD^TKVBCODE
+INSCOD1 G INSCOD1^TKVBCODE
+INSINI G INSINI^TKVBUT4
+INSKEY G INSKEY^TKVBUT4
+INSNOTES G INSNOTES^TKVBAS3
+IMPREC G IMPREC^TKVBUT4
+ISSCR G ISSCR^TKVBUT1
+KEY G ^TKVBKEY ;2
+LASTUSE S B=$ZD(+$H)_$C(9)_$S($D(^JULIAN):$ZD(^JULIAN),1:"") G GETE
+LETTERHE G LETTERHE^TKVBUT3
+LIC S B=$$LIC^TKVBUT(P1) G GETE^TKVB
+LINKRES G LINKRES^TKVBAS6
+LINKLIST G LINKLIST^TKVBAS6
+LM G LM^TKVBUT2
+LOC G LOC^TKVBAS6
+LOGINOK G LOGINOK^TKVBUTS
+LOGOFF G LOGOFF^TKVBUT
+LST G LST^TKVBUT1
+LSTTYPE G LSTTYPE^TKVBUT1
+LSTCHKS G LISTCHKS^TKVBUT5
+M S $P(X,"|",3)="MAMMO|"_XX,P1=XX ; TEMPORARILY
+MAMMO G MAMOX^TKVBMAMO
+MD G MD^TKVBPO4
+MENU G MENU^TKVBHI
+MODG G MODG^TKVBUT1
+MODHIS G MODHIS^TKVBAI6
+MODS G MODS^TKVBUT1
+MESG G MESG^TKVBUT2
+MPCMD G MPCMD^TKVBW1
+MSCAN G MSCAN^TKVBW6T
+MSCG G MSCG^TKVBUT4
+MSGDLG G MSGDLG^TKVBUT
+MSGRES G MSGRSLT^TKVBCOD6
+MSGRUN G MSGPROC^TKVBCOD6
+NFD G NFDDATE^TKVBCOD1
+NFDN G NFDDATE^TKVBCOD1
+NFDNDEF G NFDNDEF^TKVBCOD1
+NORESP Q:'P1  S B=P1 H B G GETE
+NOTIFY G NOTIFY^TKVBAS7
+OPENT G OPENT^TKVBCOD1
+OPMSG G OPMSG^TKVBCOD1
+PACSINT G PACSINT^TKVBCOD3
+PATFORM G PATFORM^TKVBTER2
+PATPI G PATPI^TKVBDM1
+PATPIRF G PATPIRF^TKVBDM1
+PATSET G PATSET^TKVBUT
+PCAF G PCAF^TKVBCODE
+PCAMT G PCAMT^TKVBCODE
+PCEX G PCEX^TKVBCODE
+PCVAL G PCVAL^TKVBCODE
+PDU G PDU^TKVBUT4
+PFL G PFL^TKVBUT4
+PFU G PFU^TKVBUT4
+PHYS G PHYS^TKVBUT3
+PIC G PIC^TKVBUT2
+PICW G PICW^TKVBF2
+PING S B=1 G GETE
+POST G POST^TKVBPO1
+PNOTES G PNOTES^TKVBUT3
+POSTCP S K=$G(^TKTVB($P(HANDLE,"/"),"PO",0)),K1=$P(K,"/",2),K=+K D CPYLST^TKVBPO5 S B=COPAY G GETE
+POSTDATA G POSTDATA^TKVBPO
+POSTDEF G POSTDEF^TKVBPO1
+POSTRCLI G POSTRCLICK^TKVBPO6
+POSTNEXT G POSTNEXT^TKVBPO6
+PSTDT G POSTDT^TKVBUT2
+POSTGRID G POST^TKVBPO
+POSTINIT G POSTINIT^TKVBPO1A
+POSTSETL G POSTSETL^TKVBPO1
+POSTSETS G POSTSETS^TKVBPO1
+POSTSTAT G POSTSTAT^TKVBPO2
+PR G PR^TKVBTER ; TEMP
+PREF G PREF^TKVBAS6
+PREFS S B=$G(^TKVBUSER($S(P1]"":P1,1:USER),"PREFS")) G GETE
+PRESDM G PRESDM^TKVBCOD1
+PRICE G PRICE^TKVBAI1
+PRMN D PRMN^TKVBCOD1
+PROB G PROB^TKVBUT2
+PROBE G PROBE^TKVBUT2
+PWDMS G PWDMS^TKVBUT4
+PRT S B=$G(^TKVBUSER(USER,"PRT",P1)) G GETE
+PRTLST G PRTLST^TKVBR
+PRTOPT G PRTOPT^TKVBR
+PRTOPTD G PRTOPTD^TKVBR
+PRTOPTL G PRTOPTL^TKVBR
+PRTOPTL1 S OP=1 G PRTOPTL^TKVBR
+RECENT S B=$G(^TKVBUSER(USER,"RECENT")) G GETE
+REMINDER G GETREM^TKVBUT1
+RESLIST G RESL^TKVBAS6
+RFIN G RFIN^TKVBCODE
+RFST G RFST^TKVBCODE
+REPAINT G REPAINT^TKVBDM3
+REF G REF^TKVBCOD3
+REFINS G REFINS^TKVBCOD3
+REFMOV G REFMOV^TKVBCOD3
+REFRESP G REFRESP^TKVBCOD3
+REFRSP G REFRSP^TKVBCOD3
+REFSUB G REFSUB^TKVBCOD3
+REPDEF S B=$C(246) D GETM^TKVB D PREPROC^TKVBREP(1)
+ S B=$C(246)_$G(^TKVBUSER(USER,"PRT",P1)) G GETE
+REPORT G ^TKVBRP
+REPORT1 S OP=1 G ^TKVBRP
+REPORT9 S OP=9 G ^TKVBRP
+REPORTDA G REPORTDA^TKVBUT2
+REPORTS S OP=0 G IN^TKVBREP
+REPORTS1 S OP=1 G IN^TKVBREP
+RESEND G RESEND^TKVBUT4
+RESTRCH S B=$A(":")_":"_$A("^")_":"_$A("|") G GETE
+RPT S GETM=1 D GETREPDEF^TKVBREP G GETE
+RPTNAM G RPTNAM^TKVBREP
+RPTSCH S AA="^RPTSCH" G RPTSCH^TKVBREP
+RST G RST^TKVBCLM
+RULE G RULE^TKVBAS6
+RPTONCE S AA="^RPTSCH" G RPTONCE^TKVBREP
+RXNO G RXNOG^TKVBAI1
+SCHCOL G SCHCOL^TKVBAS6
+SCHDETAI G SCHDETAIL^TKVBAS6
+SCHSEARC G SEARCH^TKVBAS5
+SCHSETTI G PRESET^TKVBAS6
+SCHSRC2 G SEARCH2^TKVBAS5
+SEC G SEC^TKVBUT1
+SECL G SECL^TKVBUT1
+SECT G SECT^TKVBUT1
+SETADDHN G ADDHNDL^TKVBUTS
+SETADSCD S ^TKVBUSER("LICENSE","CLIENTCODE")=$P(X,"|",4,99),B="" G GETE
+SETADMIN G SETADMIN^TKVBUT2
+SETAUDIO G SETAUDIO^TKVBTRAN
+SETAICLS G SETAICOLS^TKVBAI4
+SETAICOL G SETAICOL^TKVBAI1
+SETAIDAT G AIDATA^TKVBAI
+SETAIFIL G SETAIFILT^TKVBAI4
+SETAIIF G SETAIIF^TKVBAI4
+SETAIPRT G SETAIPRT^TKVBAI1
+SETAISET S ^TKVBUSER(USER,"AI")=$P(X,"|",4,99),B="" G GETE
+SETAISTS G SETAISETS^TKVBAI4
+SETAIVIE G SETVIEW^TKVBAI1
+SETAIVW G SETVIEW^TKVBAI5
+SETAPP G SETAPP^TKVBAS6
+SETASDAT G SET^TKVBAS
+SETAUTOP G SETAUTOP^TKVBPO4
+SETBLK G SETBLK^TKVBAS6
+SETCANCE G SETCANCEL^TKVBAS6
+SETCERRO G SETCERRO^TKVBUT3
+SETCLOSE G CLOSE^TKVBPO
+SETCODE G SET^TKVBCODE
+SETCODED G SETCODE^TKVBUT2
+SETCOLAI G COLAI^TKVBUT1
+SETCOPAY G SETCOPAY^TKVBCODE
+SETCRYST G SETCRYST^TKVBUT3
+SETCUSTF G SETCUSTF^TKVBUT1
+SETDEMO G SETDEMO^TKVBDM1
+SETDEMO1 G SETDEMO1^TKVBDM1
+SETDEMOC G SETDEMOC^TKVBDM1
+SETDEMOE G SETDEMOE^TKVBDM3
+SETDEMOS S ^TKVBUSER(USER,"DEMO")=$P(X,"|",4,99),B="" G GETE
+SETDMCOP G DMCOP^TKVBDM1
+SETDMDF D DMDF^TKVBCOD2 G GETE
+SETEDI G ^TKVBEDI
+SETEFORM G SETEFORM^TKVBUT2
+SETEFRM S HDR=1 G SETEFORM^TKVBUT2
+SETELG G SETELG^TKVBCOD3
+SETEISCP G SETEISCP^TKVBUT2
+SETEOB S TMP=$G(^PTOI(USER)),CHK=$P(P1,":"),CHKDT=$P(P1,":",2),FL=$P(P1,":",3),$P(TMP,":",5)=CHK,$P(TMP,":",6)=$E(CHKDT,5,8)_$E(CHKDT,1,4),$P(TMP,":",7)="",$P(TMP,":",9,11)=$P(P1,":",4,6),^PTOI(USER)=TMP,^DFLTG("CODE",USER)=FL K:FL="" ^DFLTG("CODE",USER)  S B=1 G GETE
+SETEOBTR D EOBTR^TKVBCOD2 G GETE
+SETEOBSC D SETSCAN^TKVBPO3 G GETE
+SETFAX G SETFAX^TKVBTERP
+SETFAXQ G SETFAXQ^TKVBTERP
+SETFEE1 S:P1'="" ^PCG(P1,"FEE1")="::::::::::::"_P2 G GETE
+SETFILE G SETFILE^TKVBUT
+SETHANG K ^TKVBUSER(USER,"HANG") S:$TR(P1,":0")'="" ^TKVBUSER(USER,"HANG")=P1 D PRO3 S B="" G GETE
+SETIFACE G SETIFACE^TKVBUT3
+SETLETTE G SETLETTE^TKVBUT3
+SETLINKR G SETLINK^TKVBAS6
+SETLOC G SETLOC^TKVBAS6
+SETLM G SETLM^TKVBUT2
+SETMAMMO G SETMAMMO^TKVBMAMO
+SETMESS G SETMESS^TKVBUT2
+SETMSCAN G SETMSCAN^TKVBW6T
+SETMSGDN G MSGRSLTREAD^TKVBCOD6
+SETMODG G SETMODG^TKVBUT1
+SETMODS G SETMODS^TKVBUT1
+SETMSCG G SETMSCG^TKVBUT4
+SETNOTIF G SETNOTIF^TKVBAS7
+SETOPMSG G OPMSG^TKVBCOD2
+SETOPENT G OPENT^TKVBCOD2
+SETPATFO G SETPATFO^TKVBTER2
+SETPATSE G SETPAT^TKVBUT
+SETPHYS G SETPHYS^TKVBUT3
+SETPIC G SETPIC^TKVBUT2
+SETPNOTE G SETPNOTE^TKVBUT3
+SETPOST G SETPOST^TKVBPO1
+SETPOSTB S ^TKVBUSER(USER,"POST","BUTTONS")=$P(X,"|",4,99) G END
+SETPOSTD G SPOSTDEF^TKVBPO1A
+SETPOSTN G SETPOSTNEXT^TKVBPO6
+SETRECEN S ^TKVBUSER(USER,"RECENT")=$P(X,"|",4,99),B="" G GETE
+SETPREF G SETPREF^TKVBAS6
+SETPREFS G LOGOUT^TKVBUT
+SETPRMN G PRMN^TKVBCOD2
+SETPROB G SETPROB^TKVBUT2
+SETPRT I P1]"" S ^TKVBUSER(USER,"PRT",P1)=P2
+ I P1="" D
+ . I P2="" K ^TKVBUSER(USER,"PRT") Q
+ . S TMP="" F  S TMP=$O(^TKVBUSER(USER,"PRT",TMP)) Q:TMP=""  I ^(TMP)=P2 K ^(TMP)
+ S B=1 G GETE
+SETPSTDT G SETPOSTD^TKVBUT2
+SETREB G REBILL^TKVBDM1
+SETREF G SETREF^TKVBCOD3
+SETREPOR G SETREPOR^TKVBUT2
+SETREPS G SETMAX^TKVBREP
+SETRESIN G RESIN^TKVBDM1
+SETRESST G RESST^TKVBDM1
+SETRPT G SETRPT^TKVBRP
+SETRPTSC S AA="^RPTSCH" G SETRPTSC^TKVBREP
+SETRSRC G SETRSRC^TKVBAS6
+SETRULE G SETRULE^TKVBAS6
+SETRXNO G RXNOS^TKVBAI1
+SETSCHBU G SETSCHBU^TKVBAS6
+SETSCHCO G SETSCHCO^TKVBAS6
+SETSCHDE G SETSCHDE^TKVBAS6
+SETSCHED G SETSCHNO^TKVBAS6
+SETCHIRO G CHIRO^TKVBCOD2
+SETSCHSB G SETSCHSB^TKVBAS6
+SETSCHSE G SETPRESET^TKVBAS6
+SETSCHSR G SETSRCHP^TKVBAS6
+SETSCHST G SETSTART^TKVBAS6
+SETSECC G SETSECC^TKVBUT1
+SETSECGD G SETSECGD^TKVBUT1
+SETSECL G SETSECL^TKVBUT1
+SETSECP G SETSECP^TKVBUT1
+SETSFTPR G SETSFTP^TKSCRFX
+SETSQL G SETSQL^TKVBSQL
+SETSTW G SETSTW^TKVBCOD3
+SETSUBSC S AA="^SUBSCH" G SETRPTSC^TKVBREP
+SETSUPPO G SETSUPPO^TKVBUT2
+SETSYS G SETSYS^TKVBUT1
+SETTEMP G SETTEMP^TKVBAS6
+SETTEXTE G SETTEXTE^TKVBPO1
+SETTIMEO S ^TKVBUSER(USER,"TIMEOUT")=$P(X,"|",4) D PRO3 S B=1 G GETE
+SETTRAN G SETTRANX^TKVBTRAN
+SETURMAC G SETURMAC^TKVBTRAN
+SETUB04 G UB04^TKVBCOD2
+SETUSERC G USRSOUT^TKVBUTS
+SETVB G VB^TKVBCOD2
+SETWCC4 G WCC4^TKVBCOD2
+SETWCC4F G WCC4F^TKVBCOD2
+SETWCC4P G WCC4P^TKVBCOD2
+SETWCC4A G WCC4A^TKVBCOD2
+SETWEB G SETWEB^TKVBW6B
+SETWORKL G SETWF^TKVBWF3
+SETWLSET G SETWFSET^TKVBWF1
+SETWLSYS G SETWFSYS^TKVBWF1
+SETWORKF I X'["WORKFLO2|" G SETWF^TKVBWF3
+SETWORK2 G SETWF^TKVBF3
+ ;
+SETWFBTN G SETWFBTN^TKVBF1
+SETWFFIL G SETWFFIL^TKVBF1
+SETWFINF G SETWFINF^TKVBF1
+SETWFJRN G SETWFJRN^TKVBF1
+SETWFOPV G SETWFOPV^TKVBF1
+SETWFPRE G SETWFPRE^TKVBF2
+SETWFPRS G SETWFPRS^TKVBF1
+SETWFSPF G SETWFSPF^TKVBF1
+SETWFST G SETWFST^TKVBF1
+SETWFST2 G SETWFSTU^TKVBF1
+SETWFTAB G SETWFTAB^TKVBF1
+SETWFVW G SETWFVW^TKVBF1
+ ;
+SETWFSET G SETWFSET^TKVBWF1
+SETWFSTU G SETWFSTU^TKVBWF1
+SETWFSYS G SETWFSYS^TKVBWF1
+SHELLD G SHELLD^TKVBUT4
+SQL G SQL^TKVBSQL
+SOCKET G SOCKET^TKVBUT
+STP G STP^TKVBUT3
+STPREPOR G STPREPORT^TKVBUT3
+STW G STW^TKVBCOD3
+SUBHIS G SUBHIS^TKVBAI7
+SUBONCE S AA="^SUBSCH" G RPTONCE^TKVBREP
+SUBSCH S AA="^SUBSCH" G RPTSCH^TKVBREP
+SUPPORT G SUPPORT^TKVBUT2
+SYS G SYS^TKVBUT1
+TABLE G TABLE^TKVBCODE
+TABNEW G TABNEW^TKVBCODE
+TEMP G TEMP^TKVBAS6
+TEMPLIST G TEMPLIST^TKVBAS6
+TEST G test^TKVBUT1
+TEXTEND G TEXTEND^TKVBPO1
+TIME S B=$ZD(+$H)_" "_$$ZT($P($H,",",2)) G GETE
+TIMEOUT S B=$G(^TKVBUSER(USER,"TIMEOUT"),11) G GETE
+TRACT G TRACT^TKVBCODE
+TRAN G TRANX^TKVBTRAN
+TRANACC G TRANACC^TKVBAI
+TUNIT S B=$$TUNIT^TKVBPO(EZ,+P1,$P(P1,":",2),$P(P1,":",3),$P(P1,":",4),$P(P1,":",5)) G GETE
+UB04 D UB04^TKVBCOD1 G GETE
+UB04L D UB04L^TKVBCOD1 G GETE
+USERCODE G USERCODE^TKVBUTS
+USERCNT G CURUSRS^TKVBUT
+VB G VB^TKVBCOD1
+WB G WB^TKVBUT4
+WBRES G WBRES^TKVBUT4
+WCC4 D WCC4^TKVBCOD1 G GETE
+WCC4F D WCC4F^TKVBCOD1 G GETE
+WCC4L D WCC4L^TKVBCOD1 G GETE
+WCC4P D WCC4P^TKVBCOD1 G GETE
+WCC4FL D WCC4FL^TKVBCOD1 G GETE
+WCC4PL D WCC4PL^TKVBCOD1 G GETE
+WCC4A D WCC4A^TKVBCOD1 G GETE
+WCC4AL D WCC4AL^TKVBCOD1 G GETE
+WCD G WCDDATE^TKVBCOD1
+WCDP G WCDPDATE^TKVBCOD1
+WLSETS G WFSETS^TKVBWF1
+WLSYS G WFSYS^TKVBWF1
+WORKLIST G GETDATA^TKVBTER2
+WEBREF D @("WEBSET^"_$S(P1="TKVBW6T":"TKVBDM4",1:P1)) G GETE
+WFACCT G WFACCT^TKVBWF1
+WFMNU G WFMNU^TKVBF2
+WFPCDG G WFPCDG^TKVBCODE
+WFPRINT G WFPRINT^TKVBWF1
+WFPRINT2 G WFPRINT^TKVBF1
+WFSETS G WFSETS^TKVBWF1
+WFSTUD G WFSTUD^TKVBWF1
+WFSYS G WFSYS^TKVBWF1
+WORKFLOW G WFLIST^TKVBWF
+ ;
+WFBTN G WFBTN^TKVBF1
+WFFILTER G WFFILTER^TKVBF1
+WFINFILT G WFINFILT^TKVBF1
+WFJRNL G WFJRNL^TKVBF1
+WFOPVW G WFOPVW^TKVBF1
+WFPREF G WFPREF^TKVBF2
+WFPRS G WFPRS^TKVBF1
+WFSPFILT G WFSPFILT^TKVBF1
+WFST G WFST^TKVBF1
+WFST2 G WFSTUD^TKVBF1
+WFTAB G WFTAB^TKVBF1
+WFVW G WFVW^TKVBF1
+WORKFLO3 S REFR=1
+WORKFLO2 G WFLIST^TKVBF
+XDATA G XDATA^TKVBDM
+ ;
+SETUPXX S LC="abcdefghijklmnopqrstuvwxyz",UP="ABCDEFGHIJKLMNOPQRSTUVWXYZ",P1=$P(X,"|",4),P2=$P(X,"|",5),DEZ="",USER=$P(X,"|"),EZ=$P(USER,$C(9),3),HANDLE=$P(USER,$C(9),2)
+ I EZ["-" S DEZ=$P(EZ,"-",2),EZ=$P(EZ,"-"),$P(USER,$C(9),3)=EZ,$P(X,"|")=USER
+ S USER=$TR($P(USER,$C(9)),LC,UP) I $D(TMO(3)) H TMO(3)
+ S HANDLE2=$P(HANDLE,"/",2) I HANDLE2?1.7AN S HANDLE2=$RE($E($RE("00000000"_HANDLE2),1,8))
+ I $E($P(X,"|",3))="-" S $P(X,"|",3)=$E($P(X,"|",3),2,$L($P(X,"|",3)))
+ I $E($P(X,"|",3),2,9)="USERFORM" S LC=LC_"_"
+ I $E($P(X,"|",3),1,4)="_EMR" S LC=LC_"_/"_$C(221)
+ I $E($P(X,"|",3),1,5)="_WC43" S LC=LC_"_/"_$C(221)
+ I $E($P(X,"|",3),1,6)="_WCMG2" S LC=LC_"_/"_$C(221)
+ S XX=$P($E($TR($P(X,"|",3),LC,UP),1,8),"-"),AA="AB"
+ Q
+ ;
+SET I XX]"" S XX=$E("SET"_XX,1,8) I $T(@XX)'="" G @XX
+SETCONT S B="ERROR: UNKNOWN COMMAND" G GETE
+ ;
+ZT(X) I $ZV["Open" Q $E(X\3600+100,2,3)_":"_$E(X\60#60+100,2,3)_":"_$E(X#60+100,2,3)
+ Q $ztime(X)
+ ;
+AGE(R) Q:$L(R)<6 ""
+ N DD,YY,MM,TY,TM,TD,T
+ S T=$ZD($H),YY=$P(T,"/",3)-$P(R,"/",3),MM=T-R,DD=$P(T,"/",2)-$P(R,"/",2) S:DD<0 MM=MM-1 S:MM<0 YY=YY-1 S:YY<0 YY=100+YY Q YY
+ ;
+DEMOAGE S P1=$E(P1,1,2)_"/"_$E(P1,3,4)_"/"_$E(P1,5,9),B=$$AGE(P1) G GETE
+ ;
+AINP(X) S K1=$S(P1["/":$P(P1,"/",2),1:1),B=$P($G(^PTG(+P1,K1)),":",3) S:B="" B=$P(^GRG(+P1),":",7)
+ S B=$TR(B," "),I=$P(B,",",2) S:$E(I)=" " I=$E(I,2,99) S B=$E($P(B,",")_"      ",1,5)_$E(I)
+ S B=$Q(^PK(B,+P1,K1),X) S:B="" B=$Q(^PK(""),X) S B=$TR($P($P(B,")"),",",2,3),",","/") Q
+ 
+
+TKVBUT^INT^1^64968,50860^0
+TKVBUT ; ADS VB INTERFACE - UTILITY FUNCTIONS;2018-08-21 12:27:58;24JUL2018  12:32;;Thu, 13 Aug 2009  14:05
+ ; ADS Corp. Copyright
+ ;
+MSGDLG ; Message Dialog
+ S B=""
+ I P1="1" D
+ . I P2="" S B="1|MSG|Do you want to clear all previous batches for all operators?"_$C(230)_260_$C(230)_"6=1,7=0" Q
+ . I P2=0 S B="1|LOGON|" Q
+ . I P2=1 K ^BATG S B="1|LOGON|All Batches cleared."
+ I $P(P1,"-")="2" D
+ . S B="1|LOGON|Contact ADS Corp. ["_$P(P1,"-",2)_"]"
+ I $P(P1,"-")="USERCNT" S B="1|LOGON|"
+ G GETE
+ ;
+TIME(TIME) ; Convert internal to external time
+ N %M,%N,%I,%TIM
+ S %M=TIME\60
+ S %N=" AM" S:%M'<720 %M=%M-720,%N=" PM" S:%M<60 %M=%M+720
+ S %I=%M\600 S:'%I %I=" "
+ S %TIM=%I_(%M\60#10)_$C(230)_(%M#60\10)_(%M#10)_%N
+ Q %TIM
+ ;
+LOGOFF S B="" F  S B=$O(^TKVBUSER("LOGON",USER,B))  Q:B=""  I $P(^(B),",",6)=HANDLE S $P(^(B),",",5)=$TR($H,",","-")
+ I HANDLE]"",'$D(^TKVBUSER(USER,"AS",EZ,"LAST"))!$G(^("LAST")),$O(^TKSCH(EZ,"HISTORY",+HANDLE,"")) S B="" F  S B=$O(^(B),-1) Q:B=""  I $P(^(B),"`",2)=3 S ^TKVBUSER(USER,"AS",EZ,"LAST")=^(B) Q
+ I HANDLE]"" K ^TKVBUSER("WEB-LOGON",+$H,HANDLE)
+ K ^SORT($J) S:$D(^TKVBUSER("USERCOUNT")) ^("USERCOUNT")=^("USERCOUNT")-1
+ I $P(X,"|",4)="T"  S B="" G GETE
+ D LOGOFF^TKVBUTS
+ S B="" G GETE
+LOGOUT S P1=$TR(P1,"abcdefghijklmnopqrstuvwxyz","ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+ I P1]"" S USER=P1,$P(X,"|",4)=""
+ S X=$P(X,"|",4,999) I USER="MP" F  Q:X'[9664091  S X=$P(X,9664091)_6922635_$P(X,9664091,2,99) ; default > XP olive green
+ S ^TKVBUSER(USER,"PREFS")=X,B="" G GETE
+ ;
+FORCEOUT Q:X["LOGOFF"
+ S P="" F  S P=$O(^TKVBUSER("LOGON",USER,P))  Q:P=""  I $P(^(P),",",6)=+HANDLE D
+ . S A=$P($P($P(^(P),",",7),"~"),":"),C=$P(^(P),",",8) J PROBES^TKVBUT2(A,C,"ZZ",0,2) Q
+ Q
+ ;
+SETDATE N (HANDLE,THANDLE,HANDLE2) S B="",TJUL=+$H,PJUL=^JULIAN,TDAY=$$GZD^IDATE
+ I TJUL<PJUL S B="System Date incorrect, please contact the Administrator" D GETE^TKVB H 2 H
+ S T=$$DATE^POSTDT(),T=$$DG^IDATE(T) I '$D(^DAY(T)) S ^DAY(T)=^TRG("Z") ;T=ymd of today
+ S ^TODAY=TDAY,^DATE=$$DLI^IDATE,^JULIAN=TJUL,^TKVBC("DATE")=+$H
+ S (THANDLE,^TKVBC("THANDLE"))=+$G(^TKVBC("COUNT"))
+ J CLEAN^TKVBUT
+ Q
+CLEAN 
+ K ^SORT,^TKAAWEB("Session")
+ S A="" F  S A=$O(^TKTVB(A)) Q:A=""  I $H-1>$G(^(A)) K ^(A)
+ S A="" F  S A=$O(^TKSCH(A)) Q:A=""  S B="" F  S B=$O(^TKSCH(A,"HISTORY",B)) Q:B=""  Q:$H-15'>$G(^(B))  K ^(B)
+ S A="" F  S A=$O(^TKVBC("LOG",A)) Q:A=""  Q:$H-3'>A  K ^(A)
+ S A=$O(^TKWEBT(""))+1000 F  S A=$O(^TKWEBT(A)) Q:A=""  K ^(A)
+ S A="" F  S A=$O(^TKWEBPUT(A)) Q:A=""  I $H-2>$G(^(A)) K ^(A)
+ S A="" F  S A=$O(^TKVBUSER("LOGONH",A)) Q:A=""  Q:$H-1'>$P(^(A),",",3)  K ^(A)
+ S A="" F  S A=$O(^TKVBUSER("WEB-LOGON",A)) Q:A=""  Q:$H-1'>A  K ^(A)
+ S A="" F  S A=$O(^TKWEBL("LOGD",A)) Q:A=""  Q:$H-25'>-A  K ^(A)
+ S A="^PROBE" F  S A=$Q(@A) Q:A=""  K:$H-1>$QS(A,2) @A
+ S A="" F  S A=$O(^TKVBDI(A)) Q:A=""  K:$H-10>$G(^(A)) ^(A)
+ S A="" F  S A=$O(^TKDIMPPS(A)) Q:A<1  K:$H-10>$G(^(A)) ^(A)
+ S CUTOFF=$G(^TKVBAUDIO("CUTOFF"),180)
+ S A="" F  S A=$O(^TKVBAUDIO("DICTATION",0,A)) Q:A=""  I $P(^(A),"|",40)>0,$P(^(A),"|",40)+CUTOFF<$H,$E(^(A))'="D" K ^(A),^TKVBAUDIO("DICTATION",A)
+ S PURGE=$H-$G(^GIF("PURGE"),90),CID=1 I $G(^GIF2(0))]"" X ^(0)
+ S A="",G="^GIFC"  F  S G=$Q(@G) Q:G=""  I @G<PURGE D  K @G
+ . S A=$QS(G,1),B=$QS(G,2),C=$QS(G,3) I $D(^GIF(A,B,C))=0 Q:'$D(^GIF2(CID,A,B,C))  M ^GIF(A,B,C)=^GIF2(CID,A,B,C) Q
+ . Q:$O(^GIF(A,B,C,""))=""  S D=$O(^(""),-1) I '$D(^GIF2(CID,A,B,C,D)) M ^GIF2(CID,A,B,C)=^GIF(A,B,C)
+ . S E=$G(^GIF(A,B,C)) Q:E=""  K ^GIF(A,B,C) S ^(C)=E
+ ; F  S A=$O(^GIFC(A)) Q:A=""  Q:A>PURGE  S (B,C,D)="" F  S B=$O(^GIFC(A,B)) Q:B=""  F  S C=$O(^GIFC(A,B,C)) Q:C=""  F  S D=$O(^GIFC(A,B,C,D)) Q:D=""  S E=$G(^GIF(B,C,D)) I $D(^GIF2(CID,B,C,D)) K ^GIF(B,C,D) S ^(D)=E
+ ; S A="" F  S A=$O(^TKVBC("USERC",$ZNSPACE,A)) Q:A=""  Q:$H-3'>A  K ^(A)
+ D POSTDTAUTO
+ J NOSHOW^TKVBASFX
+ D CLEANSEC^TKVBUTS
+ D CALC^TKVBAAPCF
+ J LOGCLEANUP
+ J CLEANFOLDERS^TKVBUT5
+ Q
+ ;
+LOGCLEANUP ;cleanup ^DEBUG and ^RUNNING files, 60 days is the default and the minimum
+ n
+ s NUMDAYS=+$G(^MSCG("UTILS","DBGLOGS","DAYSTOKEEP"))
+ if NUMDAYS<60 s NUMDAYS=60 
+ s dt=""
+ s dt=$O(^DEBUG("SCH","T",dt))
+ While '(dt="")
+ 	{
+ 		if (dt<($P($H,",",1)-NUMDAYS)) k ^DEBUG("SCH","T",dt)
+ 		s dt=$O(^DEBUG("SCH","T",dt))
+ 	}
+ 	
+ s dt=""	
+ s dt=$O(^RUNNING(dt))
+ While '(dt="")
+ 	{
+ 		if (dt<($P($H,",",1)-NUMDAYS)) k ^RUNNING(dt)
+ 		s dt=$O(^RUNNING(dt))
+ 	}
+ Q
+ ;
+POSTDTAUTO ; Monthly Close AUTO
+ ; set PostDate Hold to the last day of the month automatically
+ ; do it on the last day of the month or as soon as CLEAN is called after that
+ if '($G(^MSCG("MONTHCLOSEAUTO"))) q
+ if '($G(^TKVBUSER("LICENSE","POSTDT"))) q
+ n cnt,last,today s last="" s today=$P($H,",",1) s cnt=$O(^POSTDT(""),-1)
+ if $L(cnt) s last=$G(^POSTDT(cnt))
+ n dtOpen,dtClosed s dtOpen=$P(last,":",1) s dtClosed=$P(last,":",3)
+ if $L(dtOpen) if '$L(dtClosed) q 	 ; has an open hold, do not add another one
+ ;today is the last day, set new hold for today if not there
+ if $$ISLASTDAYOFMONTH^TKVBUT5(today) if (today=dtOpen) q 				 ; same hold date is there already, do nothing
+ if $$ISLASTDAYOFMONTH^TKVBUT5(today) s ^POSTDT(cnt+1)=today_":"_"SY" q ; new hold is set
+ ;today is not the last day of the month
+ ;find the last day of the previous month and set the hold to it if not set yet
+ n endprevmonth s endprevmonth=$$ENDPREVMONTH^TKVBUT5(today,0)
+ if (dtOpen=endprevmonth) q					;prev month hold has already been set and closed, do not set again
+ if (dtOpen>endprevmonth) q 				;there is a newer than 'last day of prev month' date hold set and closed already
+ 											;possibly manual hold was set and closed recently. so do nothing
+ if (dtClosed>endprevmonth) q 				;there is a more recent than 'last day of prev month' closed date of the previous hold
+ 											;possibly manual hold was set and closed recently. so do nothing
+ s ^POSTDT(cnt+1)=endprevmonth_":"_"SY" q	;set new hold to the last date of the previous month
+ q
+ ;
+EXIST ; Check to see if the record in a file exists
+ B
+ K LP2 I '$D(P1)&'$D(P2) S B="ERROR: NOT ENOUGH INFORMATION SENT" G GETE
+ I P1="MGG",P2'?1A1N S B="ERROR: 1 Alpha and 1 Numeric required" G GETE
+ I P1="WC43"!(P1="WC43N") S B="N" G GETE
+ I P1="INVCTRL"!(P1="INIDPL") D  G GETE
+ . S TMP=" `~!@#$%&*()_+-=[]\{}|;':"""",./<>?"
+ . S FLAG=0,L=$L(TMP) F I=1:1:L I P2[$E(TMP,I) S B="ERROR: Alpha and Numeric characters only" Q
+ . I $L(P2,"^")<2!($P(P2,"^")="")!($P(P2,"^",2)="") S B="N" Q
+ . S B="N",CHECK="^"_$S(P1="INVCTRL":"PCINV",1:"INIDPL")_"("""_$P(P2,"^")_""","""_$P(P2,"^",2)_""")" S:$D(@CHECK) B="Y"
+ S TMP=" `~!@#$%^&*()_+-=[]\{}|;':"""",./<>?"
+ I P1="DGG" S TMP=" `~!@#$%^&*()_+-=[]\{}|;':"""",/<>?"
+ I P1="PCG" S TMP=" `~!@#$%^&*()_+-=[]\{}|;':"""",/<>?"
+ I P1="PRN" S TMP=" `~!@#$%^&*()_+=[]\{}|;':"""",./<>?"
+ I P1="PST1" S TMP=" `~!@#$%^&*()_+=[]\{}|;':"""",.<>?"
+ I P1="PVFEE" S TMP=" `~!@#$%^&*()_+=[]\{}|;':"""",.<>?"
+ I P1="RFG" S TMP=" `~!@#$%^&()_+-=[]\{}|;':"""",./<>?"
+ I P1="TLG" S TMP="`~!@#$%^&*()_+-=[]\{}|;':""""/<>?"
+ I P1="RATECD" S TMP=" `~!@#$%^&*()_+-=[]\{}|;':"""",.<>?"
+ I P1="PTG_EMR" S TMP=" `~!@#$%^&*()_+-=[]\{}|;':"""",.<>?"
+ I P1="OPGU" S TMP="`~!@$%^*+-=[]{}|;:""""<>?"
+ S FLAG=0,L=$L(TMP) F I=1:1:L I P2[$E(TMP,I) S FLAG=1 Q
+ S FLAG=0 F I=1:1:L I P2[$E(TMP,I) S FLAG=1 Q
+ I FLAG S B="ERROR: Alpha and Numeric characters only" G GETE
+ S B="N" S:P1'="LIST"&(P1'="PCHK") P2=$TR(P2,"æabcdefghijklmnopqrstuvwxyz",",ABCDEFGHIJKLMNOPQRSTUVWXYZ") S LP2=$L(P2,",")
+ I P1="LPTST" S P1="LPT"
+ I P1="MOD" S P1="MODG"
+ I P1="TE" S P1="TEG"
+ I LP2=1,P1'="MGG" S P2=""""_P2_""""
+ I LP2>1,P1'="MGG" F X=1:1:LP2 S $P(P2,",",X)=""""_$P(P2,",",X)_""""
+ S TYPE=1
+ I P1="SP"!(P1="ST")!(P1="XRFSPC")!(P1="XRFSPC1") S TEMP=$P(P2,"""",2),P1=^TKVBSYS("TABLE","LIST",P1),TYPE=0 S:$D(@P1) B="Y"
+ I TYPE,P1'="FORM",P1'="MGG",P1'="PRES",P1'="PTG_EMR",P1'="OPGU" S CHECK="^"_P1_"("_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="MGG" S CHECK="^"_P1_"("""_EZ_""","""_$E(P2)_""","""_$E(P2,2)_""")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="XRFTXN" S CHECK="^REF(""TXN"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="MODG",B="Y" S P2=$P(P2,"""",2),B=B_":" D
+ . S DATAMOD=$P(^MODG(P2),":",3,99),DATAFLD=$P(^TKVBUSER("CODE","DEFAULTS","MOD",0),":",3)
+ . S L=$L(DATAFLD,$C(230))
+ . F I=1:1:L S B=B_$P(DATAFLD,$C(230),I)_$C(9)_$P(DATAMOD,":",I)_$C(230)
+ I TYPE,P1="PRN",B="Y" S P2=$P(P2,"""",2),B=B_":" D
+ . S DATAPRN=$P(^PRN(P2),":",5,12),DATAFLD=$P(^TKVBUSER("CODE","DEFAULTS","LPTST",0),":",5)
+ . S L=$L(DATAFLD,$C(230)) F I=1:1:L D
+ .. S TMP=$S(I=1:$P(DATAPRN,":"),I=3:$P(DATAPRN,":",2),1:"")
+ .. I I=6!(I=7) S TMP=$P(DATAPRN,":",3) I TMP]"" S TMP=$P(TMP,"VAR1")_66_$P(TMP,"VAR1",2)
+ .. S B=B_$P(DATAFLD,$C(230),I)_$C(9)_TMP_$S(I=L:"",1:$C(230))
+ I TYPE,P1="AP" D EZ^TKVBAS S CHECK="^TKSCH("""_PEZ_""",""PARAM"",""APP"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="ELIGINS" S CHECK="^ELG(""INS"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="FORM" S CHECK="^SETFRMG("""_EZ_""","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="IDF" S CHECK="^IMDOC(""F"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="IDS" S CHECK="^IMDOC(""S"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="IDT" S CHECK="^IMDOC(""T"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="INBOX" S CHECK="^SETFRMG(EZ,"_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="INSTMP" S CHECK="^INSTMP("_P2_")"  S:$D(@CHECK) B="T"  S CHECK="^ING("_P2_")"  S:$D(@CHECK) B="I"  S:B'="N" B="ERROR: This Code already in use for Insurance "_$S(B="T":"Templace",1:"")_"."
+ I TYPE,P1="GNG" S CHECK="^GNG("_P2_")" S:'$D(@CHECK) $P(^TKTVB(+HANDLE,"CODE","LOOKUP"),"|")=$TR(P2,"""",""),$P(^TKTVB(+HANDLE,"CODE","LOOKUP"),"|",2)=""  S:$D(@CHECK) B="Y"
+ ;
+ I TYPE,$E(P1,1,2)="GZ" S CHECK="^TKVBSYS(""TABLE"",""DATA"",""GTYPE"","_P2_")" I $D(@CHECK) D
+ . S NEW=$TR(P2,"""",""),OLD=$P($G(^TKTVB(+HANDLE,"CODE","LOOKUP")),"|",2+$E(P1,3,$L(P1) ) ) I NEW'=OLD D
+ .. S CODE=$P($G(^TKTVB(+HANDLE,"CODE","LOOKUP")),"|") ;I CODE="" Q
+ .. I CODE'="",$D(^GNG(CODE))=11 S B="ERROR: Type can not be changed if Entries exist" Q
+ .. S $P(^TKTVB(+HANDLE,"CODE","LOOKUP"),"|",2+$E(P1,3,$L(P1) ) )=NEW
+ ;
+ I TYPE,P1="SUBGZ" S CHECK="^TKVBSYS(""TABLE"",""DATA"",""GTYPE"","_P2_")" I $D(@CHECK) D
+ . S NEW=$TR(P2,"""",""),OLD=$P($G(^TKTVB(+HANDLE,"SUBCODE","LOOKUP")),"|",2) I NEW'=OLD D
+ .. S CODE=$P($G(^TKTVB(+HANDLE,"SUBCODE","LOOKUP")),"|") I CODE="" Q
+ .. I $D(^GNG($P(CODE,"`"),$P(CODE,"`",2)))=11 S B="ERROR: Type can not be changed if Entries exist" Q
+ .. S $P(^TKTVB(+HANDLE,"SUBCODE","LOOKUP"),"|",2)=NEW
+ I TYPE,P1="PCHK" S B="N" ;S CHECK="^PCHK("_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="PRES" S CHECK="^PRESC(1,"_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="PST" S STATE=$P(^PRMG(EZ,1),":",17),CHECK="^PST(1,STATE,"_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="PST1" S STATE=$P(^PRMG(EZ,1),":",17),CHECK="^PST(STATE,"_$P(P2,"/")_""","""_$P(P2,"/",2)_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="PVFEE" S CHECK="^PVFEE("_$P(P2,"/")_""","""_$P(P2,"/",2)_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="DL" S CHECK="^TKSCR(""PARAM"",""DIST"","_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="SPPCTB" S PC=$E(P2,2,$L(P2)-1),INPC=$P($G(^PCG(PC)),":",25) S CHECK="^SPPC(INPC)" I INPC S:$D(@CHECK) B="Y"
+ I TYPE,P1="TR" S CHECK="^TKSCR(""PARAM"",""USER"",$TR("_P2_",UP,LC))" S:$D(@CHECK) B="Y"
+ I TYPE,P1="PTG_EMR" D  I KEY="" S B="ERROR: NOT ENOUGH INFORMATION SENT" G GETE
+ . S KEY=$G(^TKTVB(+HANDLE,"CODE","LOOKUP","_EMR")) I KEY="" Q
+ . S DATE=$TR(P2,"""","")
+ . S DATE=$$DATECONV^TKVBCOD1(2,DATE) I DATE="" S KEY="" Q
+ . S K=$P(KEY,"/"),K1=$P(KEY,"/",2) S CHECK="^PTG(K,K1,""EMR"",DATE)" S:$D(@CHECK) B="Y"
+ I TYPE,P1="OPG",$G(^TKVBUSER("CODE","DEFAULTS","LOGINUSERNAMECHECK",0)) S CHECK="^OPGU("_P2_")" S:$D(@CHECK) B="Y"
+ I TYPE,P1="OPGU",$G(^TKVBUSER("CODE","DEFAULTS","LOGINUSERNAMECHECK",0)) S CHECK="^OPG("_P2_")"  S:$D(@CHECK) B="ERROR: This Name already in use."
+ I TYPE,P1="WEEK" S ROSTER=$G(^TKTVB(+HANDLE,"CODE","LOOKUP","ROSTER")) I ROSTER]"" D
+ . S P2=$P(P2,"""",2),B=$S($D(^ROSTRG(ROSTER)):"Y",1:"N")_":",K="" F  S K=$O(^ROSTRG(ROSTER,K)) Q:K=""  D
+ .. S K1="" F  S K1=$O(^ROSTRG(ROSTER,K,K1)) Q:K1=""  D
+ ... S B=B_$C(9)_K_"/"_K1_$C(9)_$$PATNAME^TKVBCOD7(K_"/"_K1)_$C(9)_$TR($G(^ROSTRG(ROSTER,K,K1,P2),"0:0:0:0:0:0:0"),":",$C(9))_$C(230)
+GETE G GETE^TKVB
+ ;
+CHECK ; UPDATES REPORT TITLES FOR COMPLETION STATUS
+ S (A,B)="" F  S A=$O(^TKVBSYS("REPORT","LIST",A)) Q:A=""  F  S B=$O(^TKVBSYS("REPORT","LIST",A,B)) Q:B=""  I $E(B)'="-" S C=^(B) I '$L($T(VB^@C)) S ^("-"_B)=^(B) K ^(B)
+ Q
+ ;
+ ; setup Color Array for VB
+COLOR D COLORX G GETE
+COLORX F J=0:1:255 S C(J)=$S(J+45>255:255,1:J+45)
+ K A F J=1:1 S A=$P($T(COLORS+J),";",2,9) Q:A=""  S B=$A(A),C=+$P(A," = ",2) S:$E(A)?1L*0 C=C(C\65536)*256+C(C\256#256)*256+C(C#256) S A(B)=C
+ S A(122)=A(88),A(121)=A(90) I $P($G(^TKVBUSER(USER,"PREFS")),$C(223),9) S A(122)=$P(^("PREFS"),$C(223),9),A(121)=$P(^("PREFS"),$C(223),10)
+ S B="" F J=65:1:$O(A(""),-1) S B=B_$G(A(J),-1)_$C(9)
+ S B=B_$C(1)
+ I $D(^TKVBUSER(USER,"PATSET")) S B=B_^("PATSET") Q
+ I $D(^TKVBUSER("CODE","DEFAULTS","PATSET",0)) S B=B_^(0) Q
+ S B=B_$TR("Name|3|500|3100,DOB|12|500|2000,MR#|11|500|1850,,,Sex|10|500|1300,SS#|9|500|1800,AR|57|500|1850,,",",|",$C(9,2))
+ Q
+ ;
+COLORS ;
+ ;A = 4614400
+ ;a = 14811060 16777185 13827960
+ ;B = 1214208
+ ;b = 16777145 7929720
+ ;C = 26950
+ ;c = 16769535 7929810
+ ;D = 4934475
+ ;d = 13815502
+ ;E = 44247
+ ;e = 11862015 16769505 7922943
+ ;F = 55212
+ ;f = 16769460 9226495  7929833
+ ;G = 255
+ ;g = 14803455 14811135 9869055
+ ;H = 5869055
+ ;h = 14811105 9851105
+ ;I = 10179
+ ;i = 16777185 14811060 5272575
+ ;J = 21413
+ ;j = 14811135 14803455 5286143
+ ;K = 12779520
+ ;k = 14803425 8437438
+ ;L = 16747660
+ ;l = 14803380 16765560
+ ;M = 8847540
+ ;m = 16769505 11862015 16742610
+ ;N = 21609
+ ;n = 11861985 3842233
+ ;O = 3689
+ ;o = 11861940 3820473
+ ;P = 6891520
+ ;p = 11854335 16769596
+ ;Q = 9664091   91,118,147
+ ;q = 11854305
+ ;R = 255       255,0,0         'red
+ ;r = 11854260
+ ;S = 15261655  215,223,232
+ ;s = 16185078                  'lt gray'
+ ;T = 13943732  180,195,212
+ ;W = 16777215  255,255,255     'white
+ ;Z = 0                         'black
+ ;Y = 65535     255,255,  0     'yelLow
+ ;X = 12632256 '"RGB(130, 130, 130)" 'RGB(160, 160, 160)
+ ;
+ ; y,z reserved for font & skin color
+LOG K ^TKVBT($J)
+ S COL=11,HD="",W="17,5,7,4,8,3,6,9,9,9,40,9,9,9" F J=1:1:COL S HD=HD_$C(9)_$P("IP/portXZ1,DateXZ1,TimeXZ1,UsrXZ1,HandleXZ1,EntXZ1,CmdXZ1,P1XZ1,P2XZ1,P3XZ1,P4XZ1,P5+XZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S TITLE="Medics Premier System Log"
+LOG3 S A="^TKVBC(""LOG"",99999)",D="",AT=$G(ATP)_"WZ0"_$C(9),ATC=$G(ATP)_"WZ1"_$C(9),LN=0
+ F  S A=$Q(@A,-1) Q:A=""  S C=$E(@A,1,999),IP=$P(C,"`",2),C=$P(C,"`") D  Q:LN>3000
+ . I $G(SRCH)]"" Q:$TR(C,LC,UP)'[SRCH
+ . S:$QS(A,2)'=D D=$QS(A,2),DT=$$DTJ(D),DT=$E(DT,5,6)_"/"_$E(DT,7,8) S T=$QS(A,3),B=T\60,XX=IP_AT_DT_ATC_$E(B\60+100,2,3)_":"_$E(B#60+100,2,3)_":"_$E(T#60+100,2,3),B=$P(C,"|") F L=1:1:3 S XX=XX_ATC_$P(B,$C(9),L)
+ . F L=2:1:5 S XX=XX_ATC_$TR($P(C,"|",L),$C(0,1,2,3,4,5,9),".......")
+ . S XX=XX_AT_$TR($P(C,"|",6,99),$C(0,1,2,3,4,5,9),".......")_AT,LN=LN+1,^TKVBT($J,LN)=XX
+ Q
+LIC(MOD) ; Get license info
+ N B,SUB
+ S MOD=$TR(MOD,LC,UP)
+ S B=""
+ I MOD="" D
+ . S SUB="" F  S SUB=$O(^TKVBUSER("LICENSE",SUB)) Q:SUB=""  D
+ .. S SUBDATA=$G(^TKVBUSER("LICENSE",SUB))
+ .. S B=B_SUB_"="_$S($L(SUBDATA):SUBDATA,1:0)_","
+ I MOD]"" D
+ . F I=1:1:$L(MOD,",") S SUB=$P(MOD,",",I) Q:SUB=""  D
+ .. S SUBDATA=$G(^TKVBUSER("LICENSE",SUB))
+ .. S B=B_SUB_"="_$S($L(SUBDATA):SUBDATA,1:0)_","
+ S B=B_"ENTITY="_+$G(^SETUPG(0))
+ Q B
+ ;
+DTJ(D) N K,Y,M S K=D>21608+D+305,Y=4*K+3\1461,D=K*4+3-(1461*Y)+4\4,M=5*D-3\153,D=5*D-3-(153*M)+5\5,M=M+2,Y=M\12+Y+1840,M=M#12+1 Q Y*100+M*100+D
+ ;
+AI S SRCH=$P(K," ",2,9),K=$TR($P(K," "),LC,UP) G LOG:K="LOG",LOG:K="DEBUG",ERRLOG:K="ERROR",JRNL:K="JRNL",USRLOG:K["USER",FORCELOG:K["FORCE",EXPIREDLOG:K["EXPIRED",FORMS^TKVBUT2:K="FORMS",SS:K="SS",DB^TKVBUT2:K="DB"
+ S TITLE="Function Not Defined",HD=$C(9)_K_"  "_TITLE_"XZ030" Q
+ ;
+ERRLOG K ^TKVBT($J)
+ S D1="~"
+ S D2=","
+ S COL=6,W="6,8,30,12,12,10"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("DateXZ1,TimeXZ1,ErrorXZ1,PrinDevXZ1,CurDevXZ1,UserXZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S TITLE="Medics Premier System Error Log"
+ S (D,SUB)="",AT=$G(ATP)_"WZ0"_$C(9)
+ F LN=1:1:300 S SUB=$O(^TKVBERR(1,SUB),-1) Q:SUB=""  D
+ . S DATA=$TR($G(^TKVBERR(1,SUB)),$C(9),".")
+ . S DT=$P(DATA,D1)
+ . S ERR=$P(DATA,D1,2)
+ . S DATE=$$DTJ(+DT),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)
+ . S TIME=$P(DT,D2,2)
+ . S TMP=TIME\60
+ . S TIME=$E(TMP\60+100,2,3)_":"_$E(TMP#60+100,2,3)_":"_$E(TIME#60+100,2,3)
+ . S ERROR=$P(DATA,D1,2)
+ . S PRINDEV=$P(DATA,D1,3)
+ . S CURDEV=$P(DATA,D1,4)
+ . S CURUSER=$P(DATA,D1,5)
+ . S XX=DATE_AT_TIME_AT_ERROR_AT_PRINDEV_AT_CURDEV_AT_CURUSER_AT
+ . S ^TKVBT($J,LN)=XX
+ I LN=1 S ^TKVBT($J,1)=AT_AT_AT_AT_AT_AT_AT_AT
+ Q
+FILE ; Get Host File
+ S MVER=$$SYS^SET I $ZV["M3" S MVER="M3"
+ S DELIM=$S($ZV["UNIX":"/",1:"\")
+ S B="",FOLDER=$P(X,"|",5),PARAM=$P(X,"|",6)
+ I PARAM="DATA" D   G GETE^TKVB
+ . I P1'="*" S B=$G(^TKVBFILE(P1)) Q
+ . S B="",P1="" F  S P1=$O(^TKVBFILE(P1)) Q:P1=""  S B=B_$C(9)_P1
+ . S B=$E(B,2,9999)
+ I $E(P1,$L(P1))="*" D  Q
+ . S file=$E(P1,1,$L(P1)-1)
+ . F type="jpg","bmp","gif","tif","jpeg","tiff","png","pdf" D
+ .. S P1=file_type D FILE I $E(B,1,5)'="ERROR" D GETM^TKVB
+ . S B="" D GETE^TKVB
+ I P1'["/",P1'["\" D  I B]"" G GETE^TKVB
+ . I FOLDER]"" D  Q
+ .. S FLD=$G(^TKVBUSER("FOLDERS",FOLDER)) I FLD?." " S B="ERROR: FOLDER ("_FOLDER_") NOT DEFINED" Q
+ .. S FLAGNSP=0
+ .. I FOLDER="EXCEL",$D(^MSCG("ADDSUBDIR")) S P1="claims"_DELIM_P1
+ .. I MVER="INX" S FLD=$TR(FLD,"\","/")
+ .. I FOLDER="ELGRESP",$L(P1)<17,$E(P1,2,5)>=$E($G(^MSCG("ELG","LIMITCHGDT")),5,8) D
+ ... S $E(P1,6,$L(P1))=$E(1000000000000+$E(P1,6,$L(P1)),2,13)
+ ... Q
+ .. I $E(FLD,1,3)="nsp" S %SYSDIR=$$GETPATH("") D
+ ... S TMP=$ZU(5) I MVER="INX" S TMP=$TR(TMP,UP,LC)
+ ... S P1=%SYSDIR_TMP_DELIM_$P(FLD,DELIM,2,99)_P1,FLAGNSP=1
+ .. I $ZV["Cache" S %SYSDIR=$$GETPATH("") D
+ ... I %SYSDIR[DELIM S TMP=$P(%SYSDIR,DELIM,$S(MVER="INX":2,1:2),$S(MVER="INX":3,1:$L(%SYSDIR,DELIM)-2)) D
+ .... S L=$L(FLD,DELIM) F I=1:1:L I $P(FLD,DELIM,I)="CACHE" S $P(FLD,DELIM,I)=TMP
+ .... I 'FLAGNSP S P1=FLD_P1
+ . S P1=^TKVBSYS("VER","PATH")_$S(P1="":^TKVBSYS("VER","FILE"),1:P1)
+ . I MVER="INX" S P1=$TR(P1,"\","/")
+ . I $ZV["Cache" S %SYSDIR=$$GETPATH("") D
+ .. I %SYSDIR[DELIM S TMP=$P(%SYSDIR,DELIM,$S(MVER="INX":2,1:2),$S(MVER="INX":3,1:$L(%SYSDIR,DELIM)-2)) D
+ ... S L=$L(P1,DELIM) F I=1:1:L I $P(P1,DELIM,I)="CACHE" S $P(P1,DELIM,I)=TMP
+ I MVER="INX"!(MVER="INW") D  I P1="" I '$D(file) G GETE^TKVB
+ . S $ZT="FILEFIN"
+ . S P1=$TR(P1,$S(MVER="INX":"\",1:"/"),$S(MVER="INX":"/",1:"\"))
+ . ;I MVER="INX" S P1=$P(%SYSDIR,"/",1,3)_"/"_$P(P1,"/",3,9)
+ . Q:P1=""  S B=""
+ . I PARAM="FILEDATE" D  Q
+ .. S FILE=P1
+ .. S DATA=##class(%File).GetFileDateModified(P1)_":"_##class(%File).GetFileSize(P1),DT=$P(DATA,":")
+ .. I DT<1 S B="ERROR: FILE NOT ACCESSIBLE",P1="" Q
+ .. S DATE=$$DG^IDATE(+DT),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)_"/"_$E(DATE,1,4)
+ .. S M=$P(DT,",",2)\60,TIME=$J(M\60-1#12+1,2)_":"_$E(M#60+100,2,3)_$E("AP",M>719+1)_"M"
+ .. S B=DATE_" "_TIME_$C(9)_$P(DATA,":",2)_$C(9)_FILE,P1=""
+ . I PARAM="OPEN" D  S P1="" Q
+ .. S B="" O P1:("RU"):0 I '$T S B="FILE "_P1_" CANNOT BE OPENED" Q
+ . I PARAM="CLOSE" C P1 S P1="" Q
+ . I PARAM="READ" U P1 R B#30000 U 0 D GETM^TKVB S P1="" Q
+ . O P1:("RU"):0 I '$T S B="FILE "_P1_" CANNOT BE OPENED",P1="" Q
+ . S B=##class(%File).GetFileSize(P1) D GETM^TKVB
+ . F I=1:1 U P1 R B#30000 U 0 D GETM^TKVB
+ I MVER="M3" D  I '$D(file) G GETE^TKVB
+ . S P2=P1,P1="FILE3" I PARAM="FILEDATE" S DATA=$ZOS(12,P2,255),B=$TR($P(DATA,"^",6),","," ")_$C(9)_$P(DATA,"^",3)_$C(9)_P2 Q
+ . S P2=$TR(P2,"\","/"),B="" Q:P2=""
+ . O P1:(P2:"RI") U P1 S B=$ZC U 0 I B S B="FILE "_P2_" CANNOT BE OPENED" Q
+ . S B=$P($ZOS(12,P2,255),"^",3) D GETM^TKVB
+ . F I=1:1 U P1 R B#30000 S C=$ZC  Q:C  U 0  D:1 GETM^TKVB
+ . U 0 C P1 D:$L(B) GETM^TKVB S B=""
+ U 0 I P1]"" C P1
+ Q
+ ;
+SETFILE ; Save File
+ S MVER=$$SYS^SET
+ S B="",FILE=$P(X,"|",4),FOLDER=$P(X,"|",5),RANGE=$P(X,"|",6),OUTPUT=$P(X,"|",7,9999999999),CUR=+RANGE,THRU=$P(RANGE,"-",2)
+ S DELIM=$S($ZV["UNIX":"/",1:"\")
+ S MEDICALL=0
+ I RANGE'="DEL",RANGE'="OPEN",RANGE'="CLOSE",RANGE'="DATA",RANGE'="WRITE",'CUR!'THRU!(CUR>THRU) S B="ERROR: RANGE INCORRECT" G GETE^TKVB
+ I RANGE="DATA" D  S B="" G GETE
+ . I OUTPUT="" K ^TKVBFILE(P1) Q
+ . S ^TKVBFILE(P1)=OUTPUT
+ I P1'["/",P1'["\" D  I B]"" G GETE^TKVB
+ . I FOLDER]"" D  Q
+ .. I FOLDER="MEDICALL" S FOLDER="CLAIMS",MEDICALL=1
+ .. S FLD=$G(^TKVBUSER("FOLDERS",FOLDER)) I FLD?." " S B="ERROR: FOLDER ("_FOLDER_") NOT DEFINED" Q
+ .. S FLAGNSP=0
+ .. I MVER="INX" S FLD=$TR(FLD,"\","/")
+ .. I FOLDER="ELGRESP",$L(P1)<17,$E(P1,2,5)>=$E($G(^MSCG("ELG","LIMITCHGDT")),5,8) D
+ ... S $E(P1,6,$L(P1))=$E(1000000000000+$E(P1,6,$L(P1)),2,13)
+ ... Q
+ .. I $E(FLD,1,3)="nsp" S %SYSDIR=$$GETPATH("") D
+ ... S TMP=$S($ZV["M3":"",1:$ZU(5)) I MVER="INX" S TMP=$TR(TMP,UP,LC)
+ ... S P1=%SYSDIR_TMP_DELIM_$P(FLD,DELIM,2,99)_P1,FLAGNSP=1
+ .. I $ZV["Cache" S %SYSDIR=$$GETPATH("") D
+ ... I %SYSDIR[DELIM S TMP=$P(%SYSDIR,DELIM,$S(MVER="INX":2,1:2),$S(MVER="INX":3,1:$L(%SYSDIR,DELIM)-2)) D
+ .... S L=$L(FLD,DELIM) F I=1:1:L I $P(FLD,DELIM,I)="CACHE" S $P(FLD,DELIM,I)=TMP
+ .... I 'FLAGNSP S P1=FLD_P1
+ .. I $ZV["M3" S P1=FLD_P1
+ . S P1=^TKVBSYS("VER","PATH")_$S(P1="":^TKVBSYS("VER","FILE"),1:P1)
+ . I MVER="INX" S P1=$TR(P1,"\","/")
+ . I $ZV["Cache" S %SYSDIR=$$GETPATH("") D
+ .. I %SYSDIR[DELIM S TMP=$P(%SYSDIR,DELIM,$S(MVER="INX":2,1:2),$S(MVER="INX":3,1:$L(%SYSDIR,DELIM)-2)) D
+ ... S L=$L(P1,DELIM) F I=1:1:L I $P(P1,DELIM,I)="CACHE" S $P(P1,DELIM,I)=TMP
+ ... I 'FLAGNSP S P1=FLD_P1
+ I RANGE="OPEN" D  G GETE
+ . S B="",X=$$FOPEN^DFILE2(P1,"W") I 'X!(X=2) S B="ERROR: COULD NOT OPEN  FILE"
+ I RANGE="WRITE" D  G GETE
+ . S:$ZV["M3" P1="FILE"
+ . U P1 W OUTPUT U 0 S B=""
+ I RANGE="CLOSE" S:$ZV["M3" P1="FILE" C P1 S B="" G GETE
+ ;
+ I RANGE="DEL" S X=$$DEL^DFILE(P1),B="1" G GETE^TKVB
+ ;
+ S MOD=$S(CUR>1:"A",1:"W") S X=$$FOPEN^DFILE2(P1,MOD) I 'X!(X=2) S B="ERROR: COULD NOT SAVE FILE" G GETE^TKVB
+ I RANGE'="DEL" D  I MEDICALL,CUR=THRU D ^TKVBASR14(P1,.B)
+ . I $ZV["M3" S p1=P1,P1="FILE"
+ . U P1 W OUTPUT C P1 U 0 S B="1"
+ . ;I CUR=THRU C P1 U 0 S B="1"
+ G GETE^TKVB
+ ;
+GETPATH(DUMMY) ; Get Cache path
+ I $ZV["M3" Q ""
+ N CURNSP,DIR
+ S CURNSP=$ZU(5) ZN "%SYS" S DIR=$ZU(168) ZN CURNSP
+ Q DIR
+ ;
+FILEFIN ; File Finish
+ C P1
+ S B=""
+ G GETE^TKVB
+ ;
+SS D SETUSER^TKVBUT3 S SS=1
+USRLOG K ^TKVBT($J) S LN=1
+ S COL=10,W="7,20,11,13,13,6,9,13,18,9",TITLE="Medics Premier User Logon Report"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("UserXZ1,NameXZ1,DateXZ1,Logon TimeXZ1,Logoff TimeXZ1,EntityXZ1,VersionXZ1,Connection#XZ1,IP/portXZ1,Listen#XZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S AZL="*#0"_$C(9),AZC="*#1"_$C(9),E=0
+ S A="" F  S A=$O(^TKVBUSER("LOGON",A)) Q:A=""  S F=$E("ancmelgbjdklmn",E#10+1),E=E+1 D
+ . K B S B="" F  S B=$O(^TKVBUSER("LOGON",A,B)) Q:B=""  S C=^(B),B(+$P(C,",",6))=C
+ . S B="" F J=1:1 S B=$O(B(B),-1) Q:B=""  S C=B(B),D=$P(C,",",3),ATC=$TR(AZC,"*#",F_$E("ZR",+$H=D+1)),ATL=$TR(AZL,"*#",F_$E("ZR",+$H=D+1)) D
+ .. I $G(SS),$P(C,",",5)'="" Q
+ .. S ^TKVBT($J,LN)=A_ATC_$P($G(^OPG(A)),":",2)_ATL_$ZD($P(C,",",3))_ATC_$ztime($P(C,",",4))_ATC_$S('$P(C,",",5):$P(C,",",5),1:$ztime($P($P(C,",",5),"-",2)))_ATC_$P(C,",")_ATC_$P(C,",",2)_ATC_$P(C,",",6)_ATC_$P(C,",",7)_ATL_$P(C,",",8)_ATC,LN=LN+1
+ Q
+FORCELOG K ^TKVBT($J) S LN=1
+ S COL=10,W="7,20,11,13,13,13,9,13,18,15",TITLE="Medics Premier Administrator Logoff Report"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("UserXZ1,NameXZ1,DateXZ1,Logon TimeXZ1,DateXZ1,Logoff TimeXZ1,ByXZ1,NameXZ1,IP/portXZ1,Application#XZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S AZL="*#0"_$C(9),AZC="*#1"_$C(9),E=0
+ S F="W",A="" F  S A=$O(^TKVBUSER("LOGOFF",A)) Q:A=""  S F=$S(F="f":"W",1:"f"),E=E+1 D
+ . K B S B="" F  S B=$O(^TKVBUSER("LOGOFF",A,B)) Q:B=""  S C=^(B),B(B)=C
+ . S B="" F J=1:1:10 S B=$O(B(B),-1) Q:B=""  S C=B(B),D=$P(C,",",3),ATC=$TR(AZC,"*#",F_$E("ZZ",+$H=D+1)),ATL=$TR(AZL,"*#",F_$E("ZZ",+$H=D+1)) D
+ .. I $G(SS),$P(C,",",5)'="" Q
+ .. S ^TKVBT($J,LN)=A_ATC_$P($G(^OPG(A)),":",2)_ATL_$ZD($P(C,",",3))_ATC_$ztime($P(C,",",4))_ATC_$ZD($P(C,",",5))_ATC_$ztime($P(C,",",6))_ATC_$P(C,",")_ATC_$P($G(^OPG($P(C,","))),":",2)_ATL_$P(C,",",7)_":"_$P(C,",",8)_ATL_$P(C,",",9)_ATC,LN=LN+1
+ Q
+EXPIREDLOG K ^TKVBT($J) S LN=1,TARGET=^TKVBC("THANDLE")
+ S COL=10,W="7,20,11,13,13,6,9,13,18,9",TITLE="Medics Premier Expired Connection Report"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("UserXZ1,NameXZ1,DateXZ1,Logon TimeXZ1,Logoff TimeXZ1,EntityXZ1,VersionXZ1,Connection#XZ1,IP/portXZ1,Listen#XZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S AZL="*#0"_$C(9),AZC="*#1"_$C(9),E=0
+ S F="W",A="" F  S A=$O(^TKVBC("LOG",+$H,A)) Q:A=""  D
+ . S B="" F  S B=$O(^TKVBC("LOG",+$H,A,B)) Q:B=""  S C=^(B),BY=$TR($P(C,$C(9)),LC,UP),CONN=+$P(C,$C(9),2) I BY?1U.U,CONN,CONN<TARGET S B(CONN)=BY_"|"_$$GETUSRHANDLE(BY,CONN)
+ S B="" F  S B=$O(B(B),-1) Q:B=""  S BY=$P(B(B),"|"),C=$P(B(B),"|",2),D=$P(C,",",3) D
+ . I C="" Q
+ . I $P(C,",",5)'="" Q
+ . S F=$S(F="f":"W",1:"f"),E=E+1,ATC=$TR(AZC,"*#",F_$E("ZR",+$H=D+1)),ATL=$TR(AZL,"*#",F_$E("ZR",+$H=D+1))
+ . S ^TKVBT($J,LN)=BY_ATC_$P($G(^OPG(BY)),":",2)_ATL_$ZD($P(C,",",3))_ATC_$ztime($P(C,",",4))_ATC_$S('$P(C,",",5):$P(C,",",5),1:$ztime($P($P(C,",",5),"-",2)))_ATC_$P(C,",")_ATC_$P(C,",",2)_ATC_$P(C,",",6)_ATC_$P(C,",",7)_ATL_$P(C,",",8)_ATC,LN=LN+1
+ Q
+JRNL K ^TKVBT($J) S (LN,LNN)=1,OTI=0
+ S COL=8,W="8,10,4,4,4,4,30,99",TITLE="Medics Premier Journal Log"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("ItemXZ1,TimeXZ1,NSXZ1,JobXZ1,TPXZ1,CmdXZ1,ReferenceXZ1,       Data    (green = rollback)XZ0",",",J)_$E($P(W,",",J)+100,2,3)
+ S ATC=$G(ATP)_$C(255,254)_1_$C(9),ATL=$G(ATP)_$C(255,254)_0_$C(9),(CT,PR)="",$Y=0 F J=0:1:31,128:1:255 S CT=CT_$C(J)
+ S $P(PR,".",$L(CT))="." Q:$ZV'["M3"
+ S DV="FILE",FL=$P($ZM(12),",",2) Q:FL=""  O DV:(FL:"RI") U DV S A=$ZC
+ I A U 0 C DV Q
+ F  U DV D  Q:$ZC  D JRNL1
+ . S S="" R *N Q:$ZC  R *J,*O,*O,T#4,A#2,A#2 S A=$A(A,2)*256+$A(A),TI=$A(T,3)*256+$A(T,2)*256+$A(T) I A<4096 R B#A S S="^"_B R *B Q
+ . S A=A#4096 R B#A S S="^"_B_"(" R *B
+ . F  R A#2 S A=$A(A,2)*256+$A(A)  R B#(A#4096) S B=$S($A(B)<32:"."_$E(B,2,999)*(10**($A(B))),$A(B)>225:$E(B,2,999)*(10**($A(B)-256)),$A(B)=225:0,1:B) S S=S_""""_B_"""," R *B Q:A<4096
+ . S S=$E(S,1,$L(S)-1)_")"
+ C DV Q
+JRNL1 R A#2 S A=$A(A,2)*256+$A(A),T="S",B="" R:A'=65535 B#A S:A=65535 T="K"
+ Q:S["^SORT"  Q:S["^TKE"  I TI-3>OTI,OTI D JRNL2
+ S ^TKVBT($J,LN)=$TR(LNN_ATC_$ZT(TI)_ATL_N_ATC_J_ATC_$S(O:"Y",1:"")_ATC_T_ATC_S_ATL_$TR(B,CT,PR)_ATL,$C(255,254),$P("WR,WZ,CW,BW",",",O>0*2+(T="S"+1))),LN=LN+1,OTI=TI,LNN=LNN+1 Q
+JRNL2 S ^TKVBT($J,LN)=$TR(ATC_ATL_ATC_ATC_ATC_ATC_ATL_ATL,$C(255,254),"ZR"),LN=LN+1 Q
+ ;
+PATSET S B="" F J=1:1 S A=$P($T(FIELDS+J),";",2,99) Q:A=""  S B=B_$C(1)_$TR(A,",",$C(9))
+ I $P(X,"|",4)'="DEFAULT" S B=B_$C(230)_$S($D(^TKVBUSER(USER,"PATSET")):^("PATSET"),1:$G(^TKVBUSER("CODE","DEFAULTS","PATSET",0)))
+ I $P(X,"|",4)="DEFAULT" D
+ . I $D(^TKVBUSER("CODE","DEFAULTS","PATSET",0)) S B=B_$C(230)_^(0)
+ . E  S B=B_$C(230)_$TR("Name|3|500|3100,DOB|12|500|2000,MR#|11|500|1850,,,Sex|10|500|1300,SS#|9|500|1800,AR|57|500|1850,,",",|",$C(9,2))
+ G GETE
+SETPAT S USR=$P(X,"|",4),CLEAR=$P(X,"|",5),ALLUSR=$P(X,"|",6),DATA=$P(X,"|",7)
+ I USR="" D
+ . I CLEAR="CLEAR" K ^TKVBUSER(USER,"PATSET")
+ . E  S ^TKVBUSER(USER,"PATSET")=DATA
+ . S B=1
+ I USR="DEFAULT" D
+ . I ALLUSR'="ALL" D
+ .. I CLEAR="CLEAR" D
+ ... S TMP="Name"_$C(2)_"3"_$C(2)_"500"_$C(2)_"3100"_$C(9)_"DOB"_$C(2)_"12"_$C(2)_"500"_$C(2)_"2000"_$C(9)_"PBal"_$C(2)_"46"_$C(2)_"500"_$C(2)_"1700"_$C(9,9,9)_"Age"_$C(2)_"25"_$C(2)_"500"_$C(2)_"1300"
+ ... S TMP=TMP_$C(9)_"SS#"_$C(2)_"9"_$C(2)_"500"_$C(2)_"1800"_$C(9)_"AR"_$C(2)_"57"_$C(2)_"500"_$C(2)_"1850"_$C(9,9,9)
+ ... S ^TKVBUSER("CODE","DEFAULTS","PATSET",0)=TMP
+ .. E  S ^TKVBUSER("CODE","DEFAULTS","PATSET",0)=DATA
+ . I ALLUSR="ALL" D
+ .. S SUB="" F  S SUB=$O(^TKVBUSER(SUB)) Q:SUB=""  D
+ ... I $L(SUB)>2 Q
+ ... I CLEAR="CLEAR" K ^TKVBUSER(SUB,"PATSET")
+ ... E  S ^TKVBUSER(SUB,"PATSET")=DATA
+ . S B=1
+ G GETE
+ ;
+FIELDS ;
+ ;Acct#,Account #,1
+ ;Pt#,Patient #,2
+ ;Name,Patient Name,3
+ ;Add1,Patient Address1,4
+ ;Add2,Patient Address2,5
+ ;City,Patient City/State,6
+ ;Zip,Patient Zip,7
+ ;Tel,Patient Telephone,8
+ ;SSN,Patient SSN,9
+ ;Sex,Patient Sex,10
+ ;MR#,Patient MR#,11
+ ;DOB,Patient DOB,12
+ ;Age,Patient Age,25
+ ;Dr,Patient Provider,13
+ ;Admit,Patient Admission,14
+ ;Disch,Patient Discharge,15
+ ;Refer,Patient Referral,16
+ ;RTel,Referral Telephone,20
+ ;Diag,Patient Diagnosis,17
+ ;Note,Patient Note,18
+ ;Rel,Patient Relation,19
+ ;#Pat,# of Patients,27
+ ;GSex,Guar Sex,29
+ ;GDOB,Guar DOB,30
+ ;GAge,Guar Age,78
+ ;GSSN,Guar SSN,31
+ ;GName,Guar Name,32
+ ;GAddr1,Guar Address1,33
+ ;GAddr2,Guar Address2,34
+ ;GCity,Guara City/State,35
+ ;GZip,Guar Zip Code,36
+ ;GTel,Guar Phone,37
+ ;GEmp,Guar Employer,38
+ ;PIns,Primary Insurance,45
+ ;PBal,Patient Balance,46
+ ;IBal,Insurance Balance,47
+ ;PPol,Primary Insurance Policy#,77
+ ;GBal,Guar Balance,48
+ ;LPay,Last Payment Date,49
+ ;LPay$,Last Payment Amount,50
+ ;Bal,Account Balance,54
+ ;Col,Col Balance,55
+ ;AR,AR Code,57
+ ;SFA,Special Field A,59
+ ;SFB,Special Field B,60
+ ;SFC,Special Field C,61
+ ;Vis,Visits,123
+ ;Elg,Eligibility,132
+ ;
+view s llast=$Q(^TKVBC("LOG",$H+1),-1)
+view2 S last=$Q(^TKVBC("LOG",$H+1),-1) i last'=llast D
+ . s l=llast,llast=last
+ . f  s l=$Q(@l) Q:l'["LOG"  Q:$qs(l,2)>$h  S n=@l W *15,$S($P($H,",",2)'>$G(t1):" ",1:">"),$$TIMEF,?13,$TR($P(n,"|"),$C(9)," "),?33,$P(n,"|",2),?38,$P(n,"|",3),?48,$S($L($P(n,"|",4,99))>110:$E($P(n,"|",4,99),1,110)_"...",1:$P(n,"|",4,99)),! S t1=999999
+ . S t1=$P($H,",",2)+2
+ H 1 G view2
+DBG  S last=$NA(^TKVBC("LOG",64877,48875,1267763)) G lastcont
+last   K (TRACER,debug) S last=$Q(^TKVBC("LOGX"),-1)
+lastcont S X=@last  
+ S ADDR=$P(X,"`",$L(X,"`")),X=$P(X,"`",1,$L(X,"`")-1),(HANDLE,CNT)=99999999,OS=$G(^TK("OS")),TCP=0,THANDLE=$G(^TKVBC("THANDLE")),C=0
+0 W !,"Log: ",last,!,"Command: ",X,! g WEB^TKVB:$P(X," ")="GET" g WEB^TKVB:$P(X," ")="POST",PRO1^TKVB
+l1 K (TRACER,debug) S last=$Q(^TKVBC("LOG",89999),-1) G lastcont
+l2 K (TRACER,debug) S last=$Q(^TKVBC("LOG",79999),-1) G lastcont
+lastw d last r ccc q
+TIMEF() Q:$ZV["M3" $ztime  q $ztime($p($H,",",2))
+next S Tm=99
+next1 S:$g(last)="" last="^TKVBC(""LOGX"")" s last=$q(@last,-1) Q:last=""  q:last["ERROR"  K X S X=@last,X=$P(X,"`") W !,X R A#1:Tm S Tm=$S(A="":0,1:99) K (Tm,X,last) S CNT=1 D PRO1^TKVB G next1
+ ;
+mon ; monitor log
+ n  b 0
+ r !!,"Monitor Handle, User or Statistics (H/U/S): ",mon
+ i mon?." " q
+ i "HhUuSs"'[mon q
+ d INIT^TKDEV
+ i "HhUu"[mon d  q
+ . s lower="abcdefghijklmnopqrstuvwxyz"
+ . s upper="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+ . s mon=$s("Hh"[mon:2,1:1)
+ . s (count,done)=0
+ . s curdate=+$h
+ . s sub=""
+ . f  s sub=$o(^TKVBC("LOG",curdate,sub),-1) q:sub=""  d  i done q
+ .. s sub1=""
+ .. f  s sub1=$o(^TKVBC("LOG",curdate,sub,sub1)) q:sub1=""  d  i done q
+ ... s data=$g(^TKVBC("LOG",curdate,sub,sub1))
+ ... s monitor=$tr($p($p(data,$c(9),mon),"`"),lower,upper)
+ ... i monitor]"",$l(monitor)<100,monitor'?.e1c.e,'$d(monitor(monitor)) d
+ .... s monitor(monitor)=$tr(data,$c(9)," ")
+ .... s count=count+1
+ ... i count=20 s done=1
+ . w !,"Current ",$s(mon=1:"User(s)",1:"Handle(s)"),":"
+ . w !?2,"0.",?6,"All"
+ . s sub=""
+ . f i=1:1 s sub=$o(monitor(sub)) q:sub=""  d
+ .. w !?2,i,".",?6,sub," = ",$e(monitor(sub),1,65)
+ .. s mxref(i)=sub
+ . s monitor("*")="0",mxref(0)="*"
+ . s done=0
+ . f  d  i done q
+ .. w !,"Select ",$s(mon=1:"User",1:"Handle"),": " r monitor
+ .. i monitor="" s done=1 q
+ .. s monitor=$g(mxref(monitor))
+ .. i monitor?." " q
+ .. w !!,"Monitoring ",$s(mon=1:"User",1:"Handle"),": ",monitor
+ .. w !,"Hit any key to terminate monitor"
+ .. s curtime=$o(^TKVBC("LOG",curdate,""),-1)
+ .. s glob="^TKVBC(""LOG"",curdate,curtime)"
+ .. f  s next=$q(@glob) d  i done q
+ ... i next'["^TKVBC(""LOG"","!($p(next,",",2)'=curdate) d  q
+ .... r stop:0 s:$t done=1 h:'$t 1
+ ... s glob=next
+ ... s data=@(glob)
+ ... i monitor'="*",$tr($p(data,$c(9),mon),lower,upper)'=monitor q
+ ... w !!,$zt($p(glob,",",3))," "
+ ... s len=$l(data) w TK("ROF") f i=1:1:len s char=$e(data,i) w:$a(char)<32!($a(char)>126) TK("RON"),"<",$a(char),">",TK("ROF") i $a(char)>31,$a(char)<127 w char
+ ... r stop:0 i $t s done=1
+ s start=$h
+ s date=+start
+ s start=$zd(+start)_" "_$zt($p(start,",",2))
+ s day=$zd(date)
+ s (glo,glolast)="^TKVBC(""LOG"",date)"
+ f  s glo=$q(@glo) q:glo'[("^TKVBC(""LOG"","_date)  d
+ . s glolast=glo
+ . s data=@glo
+ . s cmd=$p($p(data,"|",2),"`")
+ . s oper=$p($p(data,"|",3),"`")
+ . i cmd]"",oper]"" s log(cmd,oper)=$g(log(cmd,oper))+1
+ s done=0
+ s first=1
+ f  d  i done q
+ . r x:0 i $t s done=1 q
+ . s flag=0
+ . s glo=glolast
+ . f  s glo=$q(@glo) q:glo'[("^TKVBC(""LOG"","_date)  d
+ .. s glolast=glo
+ .. s data=@glo
+ .. s cmd=$p($p(data,"|",2),"`")
+ .. s oper=$p($p(data,"|",3),"`")
+ .. i cmd]"",oper]"" s log(cmd,oper)=$g(log(cmd,oper))+1_"~1",flag=1
+ . s dt=$h
+ . s timecur=$zt($p(dt,",",2))
+ . i first!flag d
+ .. w TK("F"),#
+ .. s timeupd=$zt($p(glolast,",",3))
+ .. w "Log Monitor started on ",start
+ .. s %C=67-$l(timecur),%R=1 w @TK("P"),"Current Time: "
+ .. w TK("UO"),!?67-$l(timeupd),"Last Update: ",timeupd,TK("UF")
+ . s %C=81-$l(timecur),%R=1 w @TK("P"),timecur
+ . i first!flag d
+ .. s (first,flag)=0
+ .. w !,TK("UO"),"Command",?10,"Arguments",TK("UF")
+ .. s cmd=""
+ .. f  s cmd=$o(log(cmd)) q:cmd=""  d
+ ... w !,cmd
+ ... s oper=""
+ ... f  s oper=$o(log(cmd,oper)) q:oper=""  d
+ .... s out=oper_"="_+log(cmd,oper)
+ .... s tab=$x/10\1*10+10
+ .... i tab+$l(out)>79 w ! s tab=10
+ .... s rev=+$p(log(cmd,oper),"~",2) s $p(log(cmd,oper),"~",2)=0
+ .... w ?tab,$s(rev:TK("RON"),1:""),out,$s(rev:TK("ROF"),1:"")
+ . s %C=80,%R=24 w @TK("P")
+ . h 1
+ q
+ ;
+ ;
+ga(gblfr,gblto) ; global to ascii conversion
+ s $zt="error"
+ n count,count1,d1,data,out,sub,tmp
+ s d1="~"
+ i $g(gblfr)?." " d  i gblfr?." " q tmp
+ . w !!,"Global to Ascii Converter"
+ . w !,"Convert Global ^"
+ . r gblfr
+ . s tmp=0_d1_"global from undefined"
+ . i gblfr?." " q
+ . i '$d(gblfr) s gblfr="" q
+ . s gblfr="^"_gblfr
+ i $g(gblto)?." " d  i gblto?." " q tmp
+ . w !,"   into Global ^"
+ . r gblto
+ . i gblto?." " s tmp=0_d1_"global undefined" q
+ . i $d(@gblto) s tmp=0_d1_"global defined" q
+ . s gblto="^"_gblto
+ s sub=gblfr_"("""")"
+ f  s sub=$zo(@sub) q:sub=""  d
+ . s data=@sub
+ . f count=1:1 s line=$e(data,1,60),data=$e(data,61,9999) d  q:data=""
+ .. s out=""
+ .. f count1=1:1:$l(line) s out=out_$a(line,count1)_"/"
+ .. s tmp=gblto_"(sub,count)"
+ .. s @tmp=out
+ q 1
+ ;
+ag(gblfr) ; ascii to global converter
+ s $zt="error"
+ n d1,data,gbl1,gbl2,out,sub,sub1
+ s d1="~"
+ i $g(gblfr)?." " d  i gblfr?." " q tmp
+ . w !!,"Ascii to Global Converter"
+ . w !,"Convert Ascii Global ^"
+ . r gblfr
+ . i gblfr?." " s tmp=0_d1_"global undefined" q
+ . s gblfr="^"_gblfr
+ s sub=""
+ s gbl1=gblfr_"(sub)"
+ f  s sub=$o(@gbl1) q:sub=""  d
+ . s (out,sub1)=""
+ . s gbl2=$e(gbl1,1,$l(gbl1)-1)_",sub1)"
+ . f  s sub1=$o(@gbl2) q:sub1=""  d
+ .. s data=@gbl2
+ .. f  q:data=""  s out=out_$c($p(data,"/")),data=$p(data,"/",2,9999)
+ . s @sub=out
+ q 1
+ ;
+error ; error trap
+ n d1
+ s d1="~"
+ w !,$ze
+ q 0
+ ;
+tcp ; test tcp connection
+ n
+ s def="209.19.2.114" s def="127.0.0.1"
+ w !,"IP ("_def_"): " r ip i ip="" s ip=def
+ r !,"Port (5012): ",port i port="" s port=5012
+ r !,"GET-1 or GETP-2 (2): ",get i get="" s get=2
+ r !,"Test (1): ",test i test="" s test=1
+ r !,"Seconds (10): ",secs,! i secs="" s secs=10
+ s io="|TCP|100"
+ i get=2 o io:(ip:port:"AS"):1 i '$t u 0 w !,"Cannot open socket" q
+ s cmd="mp"_$c(9)_"1234"_$c(9)_"1|GET"_$s(get=2:"P",1:"")_"|TEST|"_test
+ s out=$e(10000+$l(cmd),2,5)_cmd
+ ;
+ s bytes("r")=0
+ s done=0,start=$p($h,",",2)
+ f count=0:1 d  i done q
+ . i get=1 o io:(ip:port:"AS"):1 i '$t s done=1 u 0 w !,"Cannot open socket" q
+ . u io w out,!
+ . r x#5:5 s:'$t done=1 q:'$t
+ . s l=x r x#l s bytes("r")=bytes("r")+$l(x)
+ . r x#5 s l=x r x#l s bytes("r")=bytes("r")+$l(x)
+ . i get=1 c io
+ . i '(count#1000) u 0 w $c(13),"Commands sent: ",count
+ . i $p($h,",",2)-start>(secs-1) s done=1
+ c io
+ i count d
+ . w $c(13),"Commands sent: ",count
+ . w !,"Average commands/second: ",$j(count/secs,0,2)
+ . w !,"Bytes transmitted: ",$l(out)*count
+ . w !,"Average transmitted bytes/second: ",$j($l(out)*count/secs,0,0)
+ . w !,"Bytes received: ",10*count+bytes("r")
+ . w !,"Average received bytes/second: ",$j(10*count+bytes("r")/secs,0,0)
+ i 'count w "No response"
+ q
+ ;
+SOCKET J SOCKET1^TKVBUT($P($G(ADDR),"~"),$G(P1)) S B="" G GETE
+SOCKET1(ADDR,PORT) S $ZE="SOCKER^TKVUT" Q:'$G(PORT)  S DV="TCP" S ^MARK($H)=$G(PORT)_","_$G(ADDR) O DV:(ADDR_"/"_PORT) U DV S B="TEST MESSAGE IS HERE" D GETE U DV R A Q
+SOCKER S ^MARK("ERROR")=$ZE Q
+CURUSRS ;User List
+ S OK=$$CURUSRS^TKVBUTS I 'OK G GETE
+ S J=$O(^TKVBT(HANDLE,"USRL",""),-1),START="S X=0",SEARCH="S X=$O(^TKVBT(HANDLE,""USRL"",X))"
+ S B="|OK||"_$S($G(NOTITLE):"",1:$E(100000+J,2,6)_"/"_TITLE_$S(P1="*":"/"_($$CURCNTFLT^TKVBUTS)_"/"_$$TOTCNTFLT^TKVBUTS,1:"")_$C(230)_HD) W HANDLE2,$E(100000+$L(B),2,6),B,!
+ X START F  X SEARCH Q:X=""  W HANDLE2 S B="|OK||"_^(X) W $E(100000+$L(B),2,6),B
+ D END^TKVB K ^TKVBT(HANDLE,"USRL") Q
+ Q
+GETUSRHANDLE(USR,CONN) ;Get Handle for User
+ N INDX,DATA,HIT S HIT=0
+ I '$D(^TKVBUSER("LOGON",USR)) Q ""
+ S INDX="" F  S INDX=$O(^TKVBUSER("LOGON",USR,INDX)) Q:INDX=""!(HIT)  S DATA=^(INDX) I $P(DATA,",",6)=CONN  S HIT=1
+ Q $S(HIT:DATA,1:"")
+
+TKVBUT2^INT^1^65003,54788.47714^0
+TKVBUT2 ; MISC UTILITIES FOR PREMIER;2018-08-23 13:02:57;28JUN2018  13:07;;Fr
+ ; ADS Corp. Copyright
+ ;
+TRANS R "ACCNT-",ACC,! D TRANS1
+ Q
+TRANS1 
+ D TRANS1^TKVBUT3
+ Q
+TRANX S ACC=100 F  S ACC=$O(^GRG(ACC)) Q:ACC=""  W !,"Account - ",ACC,!! D TRANS1 R CCC
+ ;
+SUPPORT I P1="PREFS" S B=$G(^TKVBUSER(USER,"SUPPORT","PREFS"))
+ G GETE
+SETSUPPO I P1="PREFS" S ^TKVBUSER(USER,"SUPPORT","PREFS")=P2,B=""
+ G GETE
+ ;
+SETPROB I P1="MESSAGE" S B="" S:P2]"" ^MESSAGE(P2)=$P(X,"|",5,99) G GETE
+ S B="" I 'P1,$TR($P(X,"|",5,99),$C(9))="" G GETE
+ I 'P1 S P1=$O(^TKVBUSER("PROBLEMS",""),-1)+1
+ S B=P1 K:$TR($P(X,"|",5,99),$C(9))="" ^TKVBUSER("PROBLEMS",P1) S:$TR($P(X,"|",5,99),$C(9))'="" ^TKVBUSER("PROBLEMS",P1)=$P(X,"|",5,99) S B=P1 G GETE
+PROB I P2="DELETE",+P1 K ^TKVBUSER("PROBLEMS",P1) S B="" G GETE
+ G:P1="LIST" PLIST
+ I P1="USER" D  S B=$E(B,2,9999) G GETE
+ . S (A,B)="" F  S A=$O(^OPG(A)) Q:A=""  S:$P(^(A),":",2)?1AN.E B=B_$C(9)_$P(^(A),":",2)
+ I P1="IPLIST" D  S B=$E(B,2,9999) G GETE
+ . S (A,B,C)="" F  S A=$O(^TKVBUSER("LOGON",A)) Q:A=""  F  S C=$O(^TKVBUSER("LOGON",A,C)) Q:C=""  S B=$P($P(^(C),",",7),"~") I $L(B,".")=4 S B(B)=""
+ . S B="" F  S A=$O(B(A)) Q:A=""  S B=B_$C(9)_A
+ S ATP="1101" I P1="LOGIN" D USRLOG^TKVBUT G WRITE
+ I P1="CERROR" D  G GETE
+ . S B="" F J=1:1:100 S B=B_"ERROR LINE - "_J_$C(13,10)
+ I P1="ERRORS" D ERRLOG^TKVBUT G WRITE
+ I P1="CLIENTS" D FORMS G WRITE
+ I P1="SS" D SS^TKVBUT G WRITE
+ I P1="LOG" D LOG^TKVBUT G WRITE
+ S:P2="NEXT" P1=$O(^TKVBUSER("PROBLEMS",P1)) S:P2="PREVIOUS" P1=$O(^TKVBUSER("PROBLEMS",P1),-1) I P2="",P1="NEW" S P1=$O(^TKVBUSER("PROBLEMS",""),-1)+1
+ S B=P1_"|"_$S(P1="":"",1:$G(^TKVBUSER("PROBLEMS",P1))) S $P(B,$C(9),7)=$P(B,$C(9),7) G GETE
+ ;
+WRITE 
+ D WRITE^TKVBUT3
+ Q
+ ;
+FORMS 
+ D FORMS^TKVBUT3
+ Q
+DB K ^TKVBT($J) S LN=0
+ S C="" F J=0:3:31 S C=C_$C(J,J+1,J+2)
+ S COL=3,W="15,6,99",TITLE="Medics Premier Database Listing"
+ S HD="" F J=1:1:COL S HD=HD_$C(9)_$P("NodeXZ1,LengthXZ1,DataXZ1",",",J)_$E($P(W,",",J)+100,2,3)
+ S ATL="WZ0"_$C(9),ATR=" WZ2"_$C(9)
+ S A=$TR(SRCH,"/",","),L=9,E="",D=1 I $E(A)="-" S A=$E(A,2,99),D=-1 S:A'["(" A=A_"("""")"
+ S R=$P(A," ",2),A=$P(A," ")
+ I A[",)" S A=$P(A,",)")
+ I $E(A,$L(A))="," S A=$E(A,1,$L(A)-1)
+ I A["()" S L=1,A=$P(A,"(")
+ I A["(",A[")",D>0 S E=$P(A,")")
+ I A["(",A'[")" S A=A_")",CC=A
+ I R="",$D(@A)#2 S LN=LN+1,^TKVBT($J,LN)=A_ATL_$L(@A)_ATR_" "_$E($TR(@A,C),1,999)_ATL
+ I R="" F  S A=$Q(@A,D) Q:A=""  Q:A'[E  I $QL(A)'>L S LN=LN+1,^TKVBT($J,LN)=A_ATL_$L(@A)_ATR_" "_$E($TR(@A,C),1,999)_ATL Q:LN>5000
+ I R]"" F  S A=$Q(@A,D) Q:A=""  Q:A'[E  I $QL(A)'>L,@A[R S LN=LN+1,^TKVBT($J,LN)=A_ATL_$L(@A)_ATR_" "_$E($TR(@A,C),1,999)_ATL Q:LN>5000
+ I LN=0 S $P(^TKVBT($J,1),ATL,4)="",LN=1
+ I LN>5000 S LN=LN+1,^TKVBT($J,LN)=" > 5000 records"_ATL_ATR_ATL
+ Q
+ ;
+REPORTDA S B="" D
+ . S B="" I P2=0 S B=$G(^TKVBSYS("REPORT","FIELDS",P1)) Q
+ . I P2 S B=$G(^TKVBSYS("REPORT","FIELDS",P1,P2)) Q
+ . ; I P2="CODE" S B=$P($G(^TKVBSYS("REPORT","LIST",P1)),$C(230)) Q
+ . S (A,B)="" F  S A=$O(^TKVBSYS("REPORT","FIELDS",P1,A)) Q:A=""  S B=B_$C(10)_^(A)
+ . S B=$E(B,2,9999)
+ G GETE
+SETREPOR S B="" G:P1="" GETE I P2=0 S L=$P(X,"|",6,99),^TKVBSYS("REPORT","FIELDS",P1)=$P(L,$C(231)) S:0 ^TKVBSYS("REPORT","LIST",P1)=$P(L,$C(231),2),$P(^(P1),$C(230))=P1 G GETE
+ E  D  G GETE
+ . I $P(X,"|",6,99)="DELETE" D  Q
+ .. Q:'$D(^TKVBSYS("REPORT","FIELDS",P1,P2))  S B=P2 F  S L=B,B=$O(^(B)) Q:B=""  S ^(B-1)=^(B)
+ .. K ^(L) S B=0,C=$P(^TKVBSYS("REPORT","FIELDS",P1),"|")
+ .. F L=1:1:$L(C,$C(9))-1 S B=B+$P($P(C,$C(9),L),":",2) I B>P2 S $P(C,$C(9),L)=$P($P(C,$C(9),L),":")_":"_($P($P(C,$C(9),L),":",2)-1),$P(^(P1),"|")=C Q
+ . I $P(X,"|",6,99)="INSERT" D  Q
+ .. I $D(^TKVBSYS("REPORT","FIELDS",P1,P2))  S B="" F  S B=$O(^(B),-1) Q:B=""  S ^(B+1)=^(B)  Q:B=P2
+ .. S ^(P2)="" S B=0,C=$P(^TKVBSYS("REPORT","FIELDS",P1),"|")
+ .. F L=1:1:$L(C,$C(9))-1 S B=B+$P($P(C,$C(9),L),":",2) I B>P2 S $P(C,$C(9),L)=$P($P(C,$C(9),L),":")_":"_($P($P(C,$C(9),L),":",2)+1),$P(^(P1),"|")=C Q
+ . S L=$P(X,"|",6,99)
+ . I P2="ALL" D  Q
+ .. F P2=1:1 Q:$P(L,$C(10),P2)=""  S ^TKVBSYS("REPORT","FIELDS",P1,P2)=$P(L,$C(10),P2)
+ . S ^TKVBSYS("REPORT","FIELDS",P1,P2)=L Q
+ Q
+ ;         ;
+CODEDATA S B="" D
+ . I P2'="CODE" D  Q:B=""
+ .. F  S B=$O(^TKVBSYS("CODE","LIST",B)) Q:B=""  I P1=$P(^(B),$C(230)) S P3=P1,P1=B Q
+ . S B="" I P2=0 S B=$G(^TKVBSYS("CODE","FIELDS",P3))_$C(231)_$G(^TKVBSYS("CODE","LIST",P1))_$C(231)_P1 Q
+ . I P2 S B=$G(^TKVBSYS("CODE","FIELDS",P3,P2)) Q
+ . I P2="CODE" S B=$P($G(^TKVBSYS("CODE","LIST",P1)),$C(230)) Q
+ . S (A,B)="" F  S A=$O(^TKVBSYS("CODE","FIELDS",P3,A)) Q:A=""  S B=B_$C(10)_^(A)
+ . S B=$E(B,2,9999)
+ G GETE
+SETCODE S B="" G:P1="" GETE I P2=0 S L=$P(X,"|",6,99),P3=$P(L,$C(231),3) D  G GETE
+ . F  S B=$O(^TKVBSYS("CODE","LIST",B)) Q:B=""  I P1=$P(^(B),$C(230)) S P3=B Q
+ . S ^TKVBSYS("CODE","FIELDS",P1)=$P(L,$C(231)) S:1 ^TKVBSYS("CODE","LIST",P3)=$P(L,$C(231),2),$P(^(P3),$C(230))=P1
+ D  G GETE
+ . I $P(X,"|",6,99)="DELETE" D  Q
+ .. S P3=$P(P2,",",2) Q:'$D(^TKVBSYS("CODE","FIELDS",P1,P3))  S B=P3 F  S L=B,B=$O(^(B)) Q:B=""  S ^(B-1)=^(B)
+ .. K ^(L) S B=0,C=$P(^TKVBSYS("CODE","FIELDS",P1),"|")
+ .. S $P(C,$C(9),+P2)=$P($P(C,$C(9),+P2),":")_":"_($P($P(C,$C(9),+P2),":",2)-1),$P(^(P1),"|")=C Q
+ . I $P(X,"|",6,99)="INSERT" D  Q
+ .. S P3=$P(P2,",",2) I $D(^TKVBSYS("CODE","FIELDS",P1,P3))  S B="" F  S B=$O(^(B),-1) Q:B=""  S ^(B+1)=^(B)  Q:B=P3
+ .. S ^(P3)="" S B=0,C=$P(^TKVBSYS("CODE","FIELDS",P1),"|")
+ .. S $P(C,$C(9),+P2)=$P($P(C,$C(9),+P2),":")_":"_($P($P(C,$C(9),+P2),":",2)+1),$P(^(P1),"|")=C Q
+ . S L=$P(X,"|",6,99)
+ . I P2="ALL" D  Q
+ .. F P2=1:1 Q:$P(L,$C(10),P2)=""  S ^TKVBSYS("CODE","FIELDS",P1,P2)=$P(L,$C(10),P2)
+ . S ^TKVBSYS("CODE","FIELDS",P1,P2)=L Q
+ Q
+ ;
+PLIST S COLHD=$C(9)_"Problem #WZ107"_$C(9)_"DateWZ115"_$C(9)_"Description#WZ118"_$c(9)_"PriorityWZ105"_$C(9)_"ModuleWZ105"_$C(9)_"UserWZ108",TITLE="PROBLEM LIST"
+ S J=0,C="" F  S C=$O(^TKVBUSER("PROBLEMS",C)) Q:C=""  S J=J+1
+ I 'J S B="|GC||00001/"_TITLE_COLHD D OUT S B="|GR||0",$P(B,$C(9)_"1101WZ0",6)="" D OUT G END
+ I J>500 S J=500
+ S B="|GC||"_$E(100000+J,2,6)_"/"_TITLE_COLHD D OUT
+ F I=0:0:J-1 S C=$O(^TKVBUSER("PROBLEMS",C),-1) Q:C=""   S I=I+1,B="",D=C_"\"_$TR(^(C),$C(9,230),"\,") F K=1:1:6 S B=B_$C(9)_$P(D,"\",$P("1,6,5,3,2,8",",",K))_"1101WZ0" I K=6 S B="|GR||"_C_B D OUT
+ G END
+ ;
+ Q
+GETE Q:$D(NOWRITE)  S B="|OK||"_B D OUT2 S B="|END|"_$G(POS) D OUT W ! K POS Q
+END S B="|END|"_$G(POS) D OUT W ! Q
+OUT W HANDLE2,$E(100000+$L(B),2,6),B Q
+OUT2 W HANDLE2,$E(100000+$L(B),2,6) F j=1:1:$L(B)\40000+1 W $E(B,j-1*40000+1,j*40000)
+ Q
+ADMIN S C=$G(^TKVBUSER("SYSTEM","ADMIN")) K B S B=$P(C,"|") F L=1:1:$L(C,$C(9)) S D=$P(C,$C(9),L) S:D]"" B(D)=""
+ S B="",L="" F  S L=$O(^OPG(L)) Q:L=""  Q:L["#"  S B=B_$C(9)_L_$S($D(B(L)):"*",1:"")
+ S B=$E(B,2,99999)_"|"_$P(C,"|",2,9) G GETE
+ ; user list | message | type | disable logon | force logon
+ ; still need to finish type, disable, force
+SETADMIN S T=$P($H,",",2),USER2=$TR(P1,LC,UP),P3=$P(X,"|",6)
+ S DATA="MB|0|"_$C(10)_P2_"|7,3,0|MedicsPremier Message"
+ S ^TKVBUSER("SYSTEM","ADMIN")=$P(X,"|",4,99)
+ F JJ=1:1:$L(USER2,",") S U=$P(USER2,",",JJ) I U]"" D
+ . S P=$G(^TKVBUSER("LOGON",U))#10,IP=$P($G(^(U,P)),",",7),PORT=$P(^(P),",",8),IP=$P($TR(IP,":","~"),"~")
+ . I 'PORT!('IP) Q
+ . J PROBES^TKVBUT2(IP,PORT,DATA)
+ S B="" G GETE
+ ;
+SETMESS S T=$P($H,",",2)
+ S DATA="MB|0|"_$C(10)_P1_"|7,3,0|MedicsPremier Message"
+ S U="" F  S U=$O(^TKVBUSER("LOGON",U)) Q:U=""  D
+ . S P=$G(^TKVBUSER("LOGON",U))#10,IP=$P($G(^(U,P)),",",7),PORT=$P(^(P),",",8),IP=$P($TR(IP,":","~"),"~")
+ . I 'PORT!('IP) Q
+ . J PROBES^TKVBUT2(IP,PORT,DATA)
+ S B="" G GETE
+ ;
+MESG S USER2=$TR(P1,LC,UP),DATA="MG|"_P2_$C(3)_USER_$C(3)_$P($G(^OPG(USER)),":",2)_$C(3)_$ZT($P($H,",",2))_$C(3)_USER2
+MESS2 S P=$G(^TKVBUSER("LOGON",USER2))#10,IP=$P($G(^(USER2,P)),",",7),PORT=$P(^(P),",",8),IP=$P($TR(IP,":","~"),"~")
+ I 'PORT!('IP) S B="probe error - missing PORT or IP" G GETE
+ S C="^PROBE("_$H_")"
+ J PROBES^TKVBUT2(IP,PORT,DATA)
+ F J=1:1:5 D  Q:B'=""  H 1
+ . S B=C F  S B=$Q(@B) Q:B=""  I @B[$E(DATA,1,50) Q
+ S B=$S(B="":"Timeout",1:"") G GETE
+ ;
+MESGUP S IP=$P($P(ADDR,":"),"~"),DATA="^TKVBUSER("""_USER_""",""MESG"")" J PROBES^TKVBUT2(IP,PORT,DATA,10) Q
+ ;
+ ;   id|text|style|capt|timeout
+LOGMESS(USER,HANDLE) N B H 5 S:USER="" USER=1
+ S T=$P($H,",",2) S MESS="MB|0|"_$C(10)_$P("Good Morning,Good Afternoon",",",T>43200+1)_" "_$P($G(^OPG(USER),":"_USER),":",2)_"."_$c(10,10)_"Welcome to MedicsPremier|7,2,2|MedicsPremier Message" D MESPROB Q
+MESPROB D GETIP Q:IP=""  D PROBES(IP,PORT,MESS) Q
+HBPROB D GETIP Q:IP=""  D PROBES(IP,PORT,"HB|") Q
+GETIP S (IP,B)="" F  S B=$O(^TKVBUSER("LOGON",USER,B))  Q:B=""  I $P(^(B),",",6)=HANDLE S IP=$P($P($P(^(B),",",7),"~"),":"),PORT=$P(^(B),",",8)
+ S:PORT="" IP="" Q
+ ;
+PROBE S IP=$P($TR($G(ADDR),":","~"),"~"),PORT=P1 I P1="" S PORT=$G(^TKVBUSER("LOGON",USER))#10,PORT=$P($G(^(USER,PORT)),",",5)
+ I 'PORT!('IP) S B="probe error - missing PORT or IP" G GETE
+ S B="probe started",DATA=$P(X,"|",6,99) D GETE
+ J PROBES^TKVBUT2(IP,PORT,DATA,P2) Q
+ ; 
+PROBES(IP,PORT,DATA,DELAY,TMOX) Q:IP=""  Q:PORT=""  K ERROR N B,TMO,C,X S TMO=$S($G(TMOX):TMOX,1:25)
+ L +PROBE(IP):300 E  S ERROR="LOCKED" Q
+ S $ZT="PROBER^TKVBUT2",DEV="TCP2",OS=^TK("OS"),C1=+$H,C2=$P($H,",",2) S:$D(^PROBE("CONNECT",C1,C2)) C2=$O(^(""),-1)+.01 S ^PROBE("CONNECT",C1,C2)=IP_"-"_PORT_"-"_$J_"-"_$E($G(DATA),1,150)
+ I $G(DELAY)]"" H DELAY
+ I OS="M3" O DEV:(IP:PORT:"") U DEV S ZC=$ZC
+ I OS="M11" D
+ . S DEV="|TCP|80" S ZC=1 O DEV:(IP:PORT:"AS"):3 Q:'$T  S ZC=0 U DEV
+ I ZC D  C DEV L -PROBE(IP) Q
+ . S $P(^PROBE("CONNECT",C1,C2),"`",3)=$P($H,",",2)_" NO CONNECTION - "_ZC,(ERROR,X)="ERROR-NO-CONNECTION"
+ . I $P($G(DATA),"|")="MG" S B=$P(DATA,$C(3),5) I B]"" S C=$O(^TKVBUSER(B,"MESG",""),-1)+1,^(C)=DATA
+ S B=$G(DATA,"NO MESSAGE") I B["PR|",B'["rtf" S B=$P(B,"PR|",2),DOC=$P(B,$C(3),2),PRINTER=$P(B,$C(3)),B=$P(B,$C(3),3,9) D:B="" ONLYRTF^TKVBTER S B="PR"_$C(3)_PRINTER_$C(3)_"Document - "_DOC_$C(3)_B
+ I $E(B)="^" D
+ . S A="" F  S A=$O(@B@(A)) Q:A=""  W $E(100000+$L(^(A)),2,6),^(A),!
+ . K:B["MESG" @B Q
+ E  D
+ . I $D(Bcl) D OUT2^TKVBTER Q
+ . S X=$L(B) I $G(Bmg)]"",$D(Bms) D
+ .. S AA=Bms F  S AA=$O(@Bmg@(AA)) Q:AA=""  S X=X+$L(@Bmg@(AA))
+ . I X<99999 W $E(100000+X,2,6),B
+ . I X>99998 W 99999,$E(10000000+X,2,8),B
+ . I $G(Bmg)]"",$D(Bms) D  K Bmg,Bms
+ .. F  S Bms=$O(@Bmg@(Bms)) Q:Bms=""  W @Bmg@(Bms)
+ W ! S B="|END|" W $E(100000+$L(B),2,6),B,!
+ K X S AA=""
+PROBE2 R X#5:TMO G:'$T PROBET I $L(X)<4 S C=$S(OS="M3":$ZC,1:$ZA#8>3) G:C PROBE3 S L=X R X#(4-$L(L)):TMO S X=L_X
+ I X>0 S L=X R X#+L:TMO G:'$T PROBET I $L(X)<L S C=$S(OS="M3":$ZC,1:$ZA#8>3) G:C PROBE3 S x=X R X#(L-$L(x)):TMO G:'$T PROBET S X=x_X
+ S AA=AA_X I X'["|E" G PROBE2
+ S X=AA,^PROBE("CONNECT",C1,C2,$H)=$E(X,1,300)
+PROBE4 C DEV L -PROBE(IP) Q
+PROBE3 D PROBE4 Q:C=10054  S ^PROBE("COMM-ERROR",C1,C2)=C,(ERROR,X)="ERROR-"_C Q
+PROBER D PROBE4 S ^PROBE("ERROR",C1,C2)=$ZE_" "_$G(X),(ERROR,X)="ERROR-"_$ZE Q
+PROBET D PROBE4 S ^PROBE("TIME-OUT",C1,C2)=$H_","_$ZE,(ERROR,X)="ERROR-TIME-OUT" Q
+ ;
+INFO S B="" I P2]"",$L(P2)<5
+ ; S P1=$P(X,"|",6) S $P(X,"|",6,7)=$P(X,"|",7) ; FOR NOW
+ S:P1="" P1="?" S P3=$P($P($G(ADDR),"~"),":") S:P3="" P3="?" S ^TKVBINFO($TR(P2,LC,UP),P3,P1)=USER_"|"_HANDLE_"|"_$H_"|"_$P(X,"|",3,99) G GETE
+ ;
+CHECK S DEV="TCP2",IP="65.104.178.75" F PORT=6140:1:65500 O DEV:(IP:PORT) U DEV S B=$ZC U 0 W:'B PORT,"  " C DEV
+ Q
+EFORMXML D SETFINIT(1) S FORM=$P(X,"|",4) S B=$G(^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,0)) G GETE
+EFORM ; Get EFORM Data
+ I P1="DEFAULTS" D  G GETE
+ . S (PS,PV,RF)=""
+ . S K=$P(X,"|",5),K1=$P(K,"/",2),K=+K
+ . I K S PTDATA=^PTG(K,K1),PV=$P(PTDATA,":",13),RF=$P(PTDATA,":",16)
+ . S OPDATA=$G(^DFLTG(EZ,USER,0))
+ . S PS=$P(OPDATA,":",4)
+ . I PV?." " S PV=$P(OPDATA,":")
+ . I RF?." " S RF=$P(OPDATA,":",2)
+ . S B=PV_$C(9)_PS_$C(9)_RF
+ I $E($P(X,"|",6),1,3)="WF:" D  S B="" G END
+ . I $O(^TKSCMD("WRKFLW",$$WRK($P(X,"|",6)),""))="" S B="" D OUT Q
+ . I $P(X,"|",7)'="*" S B=$G(^($P(X,"|",7,8))) D OUT Q
+ . S PAGE=0 F  S PAGE=$O(^(PAGE)) Q:PAGE=""  S B="|OK||"_PAGE_"|"_$G(^(PAGE)) D OUT
+ D SETFINIT($S(P1="LIST":2,1:1))
+ I P1="LIST" D  G END
+ . S ACT=K-1
+ . F  S ACT=$O(^EFORM(EZ,ACT)) Q:ACT=""!(ACT>K2)  D
+ .. S PAT=K1-1
+ .. F  S PAT=$O(^EFORM(EZ,ACT,PAT)) Q:PAT=""  D
+ ... I K1,'K3,PAT'=K1 Q
+ ... I 'K1,K3,PAT'=K3 Q
+ ... I K1,K3,PAT'=K1,PAT'=K3 Q
+ ... S TY=""
+ ... F  S TY=$O(^EFORM(EZ,ACT,PAT,TY)) Q:TY=""  D
+ .... ;I TYPE]"",TYPE'=TY Q
+ .... S DT=DOS-1
+ .... F  S DT=$O(^EFORM(EZ,ACT,PAT,TY,DT)) Q:DT=""!(DT>DOS1)  D
+ ..... S INST=""
+ ..... F  S INST=$O(^EFORM(EZ,ACT,PAT,TY,DT,INST)) Q:INST=""  D
+ ...... S DATA=$G(^EFORM(EZ,ACT,PAT,TY,DT,INST))
+ ...... S OP=$P(DATA,"|",2)
+ ...... S DATA=$P(DATA,"|",1)
+ ...... S VBDATA=$P(DATA,":",3,999999)
+ ...... I SAVE S TMP=$$DG^IDATE(+DATA) I TMP<SAVE Q
+ ...... I SAVE1 S TMP=$$DG^IDATE(+DATA) I TMP>SAVE1 Q
+ ...... I NAME]"",NAME'=$P(DATA,":",2) Q
+ ...... S TMP1=$S(DT:$E(DT,5,6)_"/"_$E(DT,7,8)_"/"_$E(DT,1,4),1:DT)
+ ...... S TMP2=$$DG^IDATE(+DATA)
+ ...... S TMP3=$E(TMP2,5,6)_"/"_$E(TMP2,7,8)_"/"_$E(TMP2,1,4)
+ ...... S B=ACT_$C(9)_PAT_$C(9)_$C(9)_TMP1_$C(9)_INST_$C(9)_$P(DATA,":",2)_$C(9)_TMP3_$C(9)_$TR(VBDATA,$C(9),$C(231))_$C(9)_OP D GETM^TKVB
+ I ERROR]"" S B="ERROR:"_ERROR G GETE
+ S FORM=$P(X,"|",4)
+ I $O(^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,""))="" S B="" G GETE
+ I PAGE'="*" D  G END
+ . S SUB="" F  S SUB=$O(^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,PAGE,SUB)) Q:SUB=""  S B="|OK||"_$G(^(SUB)) D OUT
+ S PAGE=0 F  S PAGE=$O(^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,PAGE)) Q:PAGE=""  D
+ . S SUB="" F  S SUB=$O(^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,PAGE,SUB)) Q:SUB=""  S B="|OK||"_PAGE_"|"_SUB_"|"_$G(^(SUB)) D OUT
+ S B="" G END
+ ;
+SETFINIT(FLAG) ; Keywords: ACCNT, ACCNT1, DOS, INSTANCE, NAME, SAVE, TYPE
+ S (ACCNT,ACCNT1,DOS,DOS1,ERROR,INSTANCE,NAME,OTHER,SAVE,SAVE1,TYPE,WF)=""
+ S KEYS=$P(X,"|",6),PAGE=$P(X,"|",7),SUB=$P(X,"|",8)
+ F L=1:1:$L(KEYS,$C(9)) S C=$P(KEYS,$C(9),L) D
+ . S KEYN=$P(C,":"),DATA=$P(C,":",2)
+ . I KEYN]"",",ACCNT,DOS,INSTANCE,KEY,NAME,SAVE,TYPE,"[(","_KEYN_",") D  Q
+ .. I KEYN'="DOS" S @KEYN=DATA Q
+ .. I DATA S @KEYN=DATA
+ . I KEYN]"" S TMP=$G(@KEYN),@KEYN=TMP_DATA_"," I KEYN="SCH" S DOS=$P(DATA,",",4),DOS=$E(DOS,5,6)_"/"_$E(DOS,7,8)_"/"_$E(DOS,1,4)
+ I ACCNT["-" S ACCNT1=$P(ACCNT,"-",2),ACCNT=$P(ACCNT,"-")
+ S K=$P(ACCNT,"/"),K1=$P(ACCNT,"/",2) S:'K1&(FLAG'=2) K1=1
+ S K2=$P(ACCNT1,"/"),K3=$P(ACCNT1,"/",2) S:'K3&(FLAG'=2) K3=1
+ I 'K2 S K2=K,K3=K1
+ I 'K,'K2 S K2=999999999999
+ I DOS["-" S DOS1=$P(DOS,"-",2),DOS=$P(DOS,"-")
+ I DOS["/" S DOS=$P(DOS,"/",3)*100+DOS*100+$P(DOS,"/",2)
+ I DOS1["/" S DOS1=$P(DOS1,"/",3)*100+DOS1*100+$P(DOS1,"/",2)
+ I 'DOS1 S DOS1=99999999
+ I SAVE["-" S SAVE1=$P(SAVE,"-",2),SAVE=$P(SAVE,"-")
+ I SAVE["/" S SAVE=$P(SAVE,"/",3)*100+SAVE*100+$P(SAVE,"/",2)
+ I SAVE1["/" S SAVE1=$P(SAVE1,"/",3)*100+SAVE1*100+$P(SAVE1,"/",2)
+ I 'SAVE1 S SAVE1=99999999
+ I 'ACCNT,FLAG'=2 S ERROR="ACCNT "
+ I DOS="",FLAG'=2 S:'DOS&(PAGE'="POST") DOS=0 I PAGE="POST" S ERROR=ERROR_"DOS "
+ I WF]"" S WF=$P(WF,")"),DOS=$P(WF,",",WF["^TKT"*2+2)
+ ;I TYPE="",FLAG'=2 S ERROR=ERROR_"TYPE "
+ I FLAG=1,INSTANCE="" S ERROR=ERROR_"INSTANCE "
+ S FORM=$P(X,"|",4)
+ I 'FLAG,INSTANCE="",ERROR="" LOCK ^EFORM(EZ,K,K1,FORM,DOS) S INSTANCE=$O(^EFORM(EZ,K,K1,FORM,DOS,""),-1)+1
+ Q
+WRK(X) S X=$P(X,$C(9)) Q "("_$S(X["^TKT":$P(X,",",3,9),1:$P(X,"(",2,9))
+ ;
+SETEFRMX D SETFINIT(1)
+ S ^EFORM(EZ,K,K1,$P(X,"|",4),DOS,INSTANCE,0)=$P(X,"|",7,999),B=INSTANCE LOCK   G GETE
+SETEFORM I $E(P2,1,3)="WF:" S ^TKSCMD("WRKFLW",$$WRK(P2),$P(X,"|",7,8))=$P(X,"|",9,999) S B="" G GETE
+ D SETFINIT(0)
+ I ERROR]"" S B="ERROR:"_ERROR G GETE^TKVB
+ S FORM=$P(X,"|",4)
+ I PAGE="DELETE" K ^EFORM(EZ,K,K1,FORM,DOS,INSTANCE) S B="" LOCK  G GETE
+ I $G(HDR) S ^EFORM(EZ,K,K1,FORM,DOS,INSTANCE)=$H_":"_$P(X,"|",4)_":"_P2 S B=INSTANCE LOCK  G GETE
+ I PAGE_SUB=11 K ^EFORM(EZ,K,K1,FORM,DOS,INSTANCE)
+ ;
+ I PAGE="POST" D  LOCK  G GETE
+ . S B="",G=0,DATA=$P(X,"|",9),CHGSLP=$P(X,"|",4)
+ . S L=$L(DATA,$C(230))
+ . F I=1:1:L S DATA1=$P(DATA,$C(230),I) D
+ .. S TYPE=$P(DATA1,$C(9)),CODE=$P(DATA1,$C(9),2)
+ .. I TYPE="AUTH" S G(G,"AUTH")=CODE
+ .. I TYPE="DG" S TMP=$O(G(G,"DG",""),-1)+1,G(G,"DG",TMP)=CODE
+ .. I TYPE="MOD",$L($G(G(G,"MOD")))<9 S G(G,"MOD")=$G(G(G,"MOD"))_$E(CODE,1,8)
+ .. I TYPE="PC" S G=G+1,G(G,"PC")=CODE
+ .. I TYPE="PS" S G(G,"PS")=CODE
+ .. I TYPE="PV"  S TMP=$O(G(G,"PV",""),-1)+1,G(G,"PV",TMP)=CODE
+ .. I TYPE="QTY" S G(G,"QT")=CODE
+ .. I TYPE="RF" S G(G,"RF")=CODE
+ .. I TYPE="DP" S G(G,"DP")=CODE
+ .. I TYPE="COPAY" S G(G,"COPAY")=CODE
+ .. I TYPE="CHECK" S G(G,"CHECK")=CODE
+ .. I TYPE="RECALLCD" S G(G,"RECALLCD")=CODE
+ .. I TYPE="RECALLDT" S G(G,"RECALLDT")=CODE
+ .. I TYPE="NOTE1" S G(G,"NOTE1")=CODE
+ .. I TYPE="NOTE2" S G(G,"NOTE2")=CODE
+ . S OPDATA=$G(^DFLTG(EZ,USER,0)),PTDATA=^PTG(K,K1)
+ . S RULE=''$G(^MSCG("AUTOPOST","RULEENGINE"))
+ . N CTR S CTR=0
+ . F RULE=RULE:-1:0 S G="" F  S G=$O(G(G)) Q:G=""  D
+ .. F I=1:1 Q:'$D(G(G,"DG",I))  S G(G,"DG"_I)=G(G,"DG",I)
+ .. F I=1:1 Q:'$D(G(G,"PV",I))  S G(G,"PV"_$S(I=1:"",1:I))=G(G,"PV",I)
+ .. K OUT M OUT=G(G)
+ .. S OUT("EZ")=EZ,OUT("QT")=$S($D(OUT("QT")):OUT("QT"),1:1),OUT("K")=K,OUT("K1")=K1
+ .. I $G(OUT("PC"))]"" S PCDATA=$G(^PCG(OUT("PC"),EZ),$G(^PCG(OUT("PC"))))
+ .. I $G(OUT("DP"))?." " S OUT("DP")=$S($P($G(PCDATA),":",21)]"":$P(PCDATA,":",21),1:$P(OPDATA,":",3))
+ .. I OUT("DP")="",$G(^MSCG("ICHGSLIP","ALLOWNODP")) S OUT("DP")=" "
+ .. I $G(OUT("PS"))?." " S OUT("PS")=$P(OPDATA,":",4)
+ .. I OUT("PS")="",$G(^MSCG("ICHGSLIP","ALLOWNOPS")) S OUT("PS")=" "
+ .. I $G(OUT("PV"))?." " S OUT("PV")=$P(PTDATA,":",13)
+ .. I OUT("PV")?." " S OUT("PV")=$P(OPDATA,":")
+ .. I OUT("PV")="",$G(^MSCG("ICHGSLIP","ALLOWNOPV")) S OUT("PV")=" "
+ .. I $G(OUT("RF"))?." " S OUT("RF")=$P(PTDATA,":",16)
+ .. I OUT("RF")?." " S OUT("RF")=$P(OPDATA,":",2)
+ .. S OUT("DOSF")=DOS,OUT("OP")=USER,OUT("SRC")="I,"_CHGSLP
+ .. I 'RULE,$G(OUT("RECALLCD"))]"",$G(OUT("RECALLDT"))]"" D SETRECALL(.OUT) K OUT("RECALLCD"),OUT("RECALLDT")
+ .. I 'RULE,$G(OUT("COPAY")) D SETCOPAY(.OUT)
+ .. S X=$$DUPCHK^TKVBPO4(K,K1,$G(OUT("PC")),OUT("DOSF"),"",$G(OUT("PV"))) I X S B=B_"ERROR"_$C(230)_$G(G(G,"PC"))_$C(230)_"DUPLICATE"_$C(9) Q
+ .. D
+ ... S CHECKONLY=$G(^TKVBUSER("CODE","DEFAULTS","HOLDINTERACTIVECHARGES",0))
+ ... I RULE S CHECKONLY=1
+ ... N OTHER
+ ... I 'RULE M OTHER=CTR
+ ... S TODAY=$$DATECONV^TKVBCOD1(8,+$H)
+ ... S TRANS=""
+ ... N I S X=$$STORE^TKVBPO1(.OUT,.MSG,.TRANS,,CHECKONLY,,1,.OTHER)
+ ... I 'RULE,$G(OUT(CTR)),TRANS K CTR(OUT(CTR))
+ .. I RULE D  Q
+ ... S CTR=CTR-1
+ ... S G(G,"CTR")=CTR
+ ... S CTR(CTR)=$G(OUT("HOLD"))
+ ... Q
+ .. S (SUB,TMP)="" F  S SUB=$O(MSG(SUB)) Q:SUB=""  S TMP1=MSG(SUB) D
+ ... I $P(TMP1,":",1)'="CODERULES" S TMP=TMP_"Field: "_$P(TMP1,":")_" ("_$P(TMP1,":",3)_") "_$P($P(TMP1,":",2),"=",2)
+ ... I $P(TMP1,":",1)="CODERULES" S TMP=TMP_$$TRANS^TKVBPO6(TMP1)
+ ... S TMP=TMP_$S($O(MSG(SUB))]"":$C(13),1:"")
+ ... Q
+ .. S B=B_$S(X:"ERROR",1:"POSTED")_$C(230)_$S(X:"",CHECKONLY:"HELD for Autopost",1:TRANS)_$C(230)_$G(G(G,"PC"))_$C(230)_$S(X:TMP,1:"")_$C(9)
+ .. I CHECKONLY&('X)!('CHECKONLY&(X]"")),$D(OUT("HOLD")) S CNT=$O(^TKHIC(OUT("EZ"),OUT("PS"),OUT("PV"),TODAY,""),-1)+1,^TKHIC(OUT("EZ"),OUT("PS"),OUT("PV"),TODAY,CNT)=OUT("HOLD") I $P($G(OUT("COPAY")),":",2) S ^TKHIC(OUT("EZ"),OUT("PS"),OUT("PV"),TODAY,CNT,"COPAY")=OUT("COPAY")
+ . I '$D(G(1,"PC")) S B="ERROR"_$C(230,230,230)_"PC:REQUIRED"_$C(9)
+ ;
+ ; created:description:vb data
+ S ^EFORM(EZ,K,K1,FORM,DOS,INSTANCE)=$H_":"_$P(X,"|",4)_":"_P2_"|"_USER
+ S ^EFORM(EZ,K,K1,FORM,DOS,INSTANCE,PAGE,SUB)=$P(X,"|",9,99999)
+ LOCK
+ S B=INSTANCE G GETE
+ ;
+SETPIC S CID=1 I $G(^GIF2(0))]"" X ^(0)
+ I P1="DELETE" D  G GETE
+ . S K=$P(P2,$C(230)),TYPE=$P(P2,$C(230),2),FILE=$P(P2,$C(230),3)
+ . I K=""!(TYPE="")!(FILE="") S B="0:PARAMETERS MISSING" Q
+ . I K="GENERAL" D DELGENPICEOB Q
+ . I K="GENERAL-BATCH" D DELBATCH Q
+ . I FILE[$C(175) D DELGENPIC Q
+ . S COUNT=0,SUB=""
+ . F  S SUB=$O(^GIF(K,TYPE,SUB)) Q:SUB=""  I $P(SUB,"_PAGE_")=FILE K ^(SUB),^GIF2(CID,K,TYPE,SUB) S COUNT=COUNT+1
+ . I $D(^GIF(K,TYPE,FILE)) K ^(FILE),^GIF2(CID,K,TYPE,FILE) S COUNT=COUNT+1
+ . S B=$S(COUNT:"1:"_COUNT_" IMAGE(S) DELETED",1:"0:NO MATCHING IMAGES FOUND")
+ I P1="ENC" D  G GETE
+ . S K=$P(P2,$C(230)),TYPE=$P(P2,$C(230),2),FILE=$P(P2,$C(230),3),TYPE2=$P(P2,$C(230),4)
+ . I K=""!(TYPE="")!(FILE="") S B="0:PARAMETERS MISSING" Q
+ . S $P(^GIF(K,TYPE,FILE),"`",4)=TYPE2,$P(^GIF2(CID,K,TYPE,FILE),"`",4)=TYPE2,B=1
+ I P1="RENAME"!(P1="SAVEAS") D  G GETE
+ . S K=$P(P2,$C(230)),TYPE1=$P(P2,$C(230),2),TYPE2=$P(P2,$C(230),4)
+ . S FILE1=$P(P2,$C(230),3),FILE2=$P(P2,$C(230),5)
+ . S ALL=$P(P2,$C(230),6),COUNT=0
+ . I K=""!(TYPE1="")!(FILE1="")!(TYPE2="")!(FILE2="") S B="0:PARAMETERS MISSING" Q
+ . I ALL="",'$D(^GIF(K,TYPE1,FILE1)) S B="0:IMAGE UNDEFINED" Q
+ . I $D(^GIF(K,TYPE1,FILE1)) D
+ .. M ^GIF(K,TYPE2,FILE2)=^GIF(K,TYPE1,FILE1) M ^GIF2(CID,K,TYPE2,FILE2)=^GIF2(CID,K,TYPE1,FILE1)
+ .. S $P(^GIF(K,TYPE2,FILE2),"`")=+$H K:P1="RENAME" ^GIF(K,TYPE1,FILE1) S COUNT=COUNT+1
+ .. S $P(^GIF2(CID,K,TYPE2,FILE2),"`")=+$H K:P1="RENAME" ^GIF2(CID,K,TYPE1,FILE1)
+ . I ALL="*" S SUB="" D
+ .. F  S SUB=$O(^GIF(K,TYPE1,SUB)) Q:SUB=""  D
+ ... I $P(SUB,"_PAGE_")=FILE1 D
+ .... M ^GIF(K,TYPE2,FILE2)=^GIF(K,TYPE1,FILE1) S $P(^GIF(K,TYPE2,FILE2),"`")=+$H K:P1="RENAME" ^GIF(K,TYPE1,FILE1) S COUNT=COUNT+1
+ .... M ^GIF2(CID,K,TYPE2,FILE2)=^GIF2(CID,K,TYPE1,FILE1) S $P(^GIF2(CID,K,TYPE2,FILE2),"`")=+$H K:P1="RENAME" ^GIF2(CID,K,TYPE1,FILE1)
+ . S B="1:"_COUNT_" IMAGE(S) "_$S(P1="RENAME":"RENAMED",1:"SAVED AS")
+ I P1="SETTINGS" S ^TKVBUSER(USER,"PICS")=$P(X,"|",5),^TKVBUSER("ALLUSERS","PICS")=$P(X,"|",6) S B="" G GETE
+ I P1="ASSOC" D LINKGENPIC S B="" G GETE
+ S B=$P(X,"|",5,999) D SETPX
+ I ACC=""!(TYP="")!(DES="") S B="" G GETE
+ I ACC?2A1N.N D SETGENPIC G GETE
+ I ($E(ACC,1,2)="CH")!($E(ACC,1,2)="BC") D SETGENEOB G GETE
+ I DES[$C(175)!(ACC="GENERAL") D SAVGENPIC G GETE
+ S DES=$TR(DES,"`")
+ S WR="" I ACC="SYSTEM",SGM<2,0 D
+ . I OS="M3" D
+ .. S DEV="FILE",FILE=$P(DES,"_") O DEV:(FILE:"NW") S WR="U DEV W B U 0"
+ S IMAGEDATE=$H,ELITEPURGE=0
+ S:$G(FromElite)&(+DATE>0) $p(IMAGEDATE,",",1)=DATE,ELITEPURGE=$H-IMAGEDATE>90
+ I SGM<2 K ^GIF(ACC,TYP,DES) I $L(B) S ^GIF(ACC,TYP,DES)=IMAGEDATE_"``"_FIL_"`"_SRC_"`"_FMT_"`"_$L(B) I ACC>0 S:'ELITEPURGE ^GIFC(ACC,TYP,DES)=+IMAGEDATE S ^GIF2(CID,ACC,TYP,DES)=^GIF(ACC,TYP,DES)
+ I $L(B) D
+ . I ELITEPURGE D
+ .. ; from elite conversion only have ACC>0
+ .. S D=$S(SGM<2:1,1:$O(^GIF2(CID,ACC,TYP,DES,""),-1)+1) F J=1:1:$L(B)-1\800+1 S ^GIF2(CID,ACC,TYP,DES,D)=$E(B,J-1*800+1,J*800) S:'ELITEPURGE ^GIF(ACC,TYP,DES,D)=$E(B,J-1*800+1,J*800) S D=D+1
+ .. I $L(B)<8500 D
+ ... S SUB="",SIZ=0 F  S SUB=$O(^GIF2(CID,ACC,TYP,DES,SUB)) Q:SUB=""  S SIZ=SIZ+$L(^(SUB))
+ ... S $P(^GIF(ACC,TYP,DES),"`",2)=SIZ
+ ... S ^GIF2(CID,ACC,TYP,DES)=^GIF(ACC,TYP,DES)
+ . I 'ELITEPURGE D
+ .. I ACC="SYSTEM",$G(WR)]"" X WR
+ .. S D=$S(SGM<2:1,1:$O(^GIF(ACC,TYP,DES,""),-1)+1) F J=1:1:$L(B)-1\800+1 S:ACC>0 ^GIF2(CID,ACC,TYP,DES,D)=$E(B,J-1*800+1,J*800) S ^GIF(ACC,TYP,DES,D)=$E(B,J-1*800+1,J*800),D=D+1
+ .. I $L(B)<8500 D
+ ... S SUB="",SIZ=0 F  S SUB=$O(^GIF(ACC,TYP,DES,SUB)) Q:SUB=""  S SIZ=SIZ+$L(^(SUB))
+ ... S $P(^GIF(ACC,TYP,DES),"`",2)=SIZ I ACC="SYSTEM",$G(WR)]"" C DEV
+ ... I ACC>0 S ^GIF2(CID,ACC,TYP,DES)=^GIF(ACC,TYP,DES)
+ S B="|||" G GETE
+SETPX
+ D SETPX^TKVBUT3
+ Q
+ ;
+SETGENPIC ;Set General Pic
+ S LKHANDLE=$E(ACC,3,$L(ACC)),LKTYPE=$E(ACC,1,2)
+ S AA="^TKTVB("""_LKHANDLE_""","""_LKTYPE_""")"
+ S ID=$G(@AA@(0,"SCAN"))
+ I DES'["_PAGE_" S DES=DES_"_PAGE_0001"
+ I SGM<2 D
+ . S PG=+$P(DES,"PAGE_",2) I PG=1 D
+ .. I '$D(^GIF("general","Z")) S ^GIF("general","Z")=1
+ .. F I=1:1 LOCK ^GIF("general","Z"):5 Q:$T  S FLAG("NOLOCK")=1
+ .. I $D(FLAG("NOLOCK")) S B="0:UNABLE TO GET IMAGE ID" Q
+ .. S ID=$G(^GIF("general","Z")),^GIF("general","Z")=ID+1 LOCK
+ .. S @AA@(0,"SCAN")=ID
+ . S ID=(ID\1)+(PG/10000),@AA@(0,"SCAN")=ID
+ . I $L(B) S ^GIF("general",ID)=$H_"``"_FIL_"`"_SRC_"`"_FMT_"`"_$L(B)_"`"_TYP_"`"_DES
+ I $L(B) D
+ . S D=$S(SGM<2:1,1:$O(^GIF("general",ID,""),-1)+1) F J=1:1:$L(B)-1\800+1 S ^GIF("general",ID,D)=$E(B,J-1*800+1,J*800),D=D+1
+ . I $L(B)<8500 D
+ .. S SUB="",SIZ=0 F  S SUB=$O(^GIF("general",ID,SUB)) Q:SUB=""  S SIZ=SIZ+$L(^(SUB))
+ .. S $P(^GIF("general",ID),"`",2)=SIZ
+ .. I '$D(^TKTVB(LKHANDLE))#2 S ^(LKHANDLE)=$H
+ .. S ^TKTVB(LKHANDLE,"PIC",LKTYPE,ID)=""
+ S B="|||"
+ Q
+SETGENEOB ;Set General EOB Pic
+ S CHKDATE=$P(ACC,"@",2)
+ S INS=$P(ACC,"@",3)
+ S ACC=$P(ACC,"@")
+ S BATCH=0,IND="check"
+ I $E(ACC,1,2)="BC" S BATCH=1,IND="batch"
+ I CHKDATE]"" S CHKDATE=$$DATECONV^TKVBCOD1(2,CHKDATE)
+ S CHECK=$E(ACC,3,$L(ACC))
+ S AA="^TKTVB("""_HANDLE_""",""CH"")"
+ S ID=$G(@AA@(0,"SCAN"))
+ S SEP=" "
+ I DES'["_PAGE_" S DES=DES_"_PAGE_0001"
+ I $TR($P(DES,"_")," ","")="" S $P(DES,"_")="",SEP=""
+ I SGM<2 D
+ . S PG=+$P(DES,"PAGE_",2) I PG=1 D
+ .. S PREV=+$S(CHKDATE]"":$G(^GIF(IND,CHECK,CHKDATE)),1:$G(^GIF(IND,CHECK)))
+ .. I PREV D  S ID=PREV
+ ... I BATCH D  Q
+ .... N B
+ .... N FILE S FILE=PREV
+ .... D DELBATCH
+ .... Q
+ ... S ID=PREV F  S ID=$O(^GIF("general",ID)) Q:ID=""!($P(ID,".")'=PREV)  D DELGENEOB(ID,CHECK,CHKDATE,1)
+ .. I '$D(^GIF("general","Z")) S ^GIF("general","Z")=1
+ .. F I=1:1 LOCK ^GIF("general","Z"):5 Q:$T  S FLAG("NOLOCK")=1
+ .. I 'PREV,$D(FLAG("NOLOCK")) S B="0:UNABLE TO GET IMAGE ID" Q
+ .. I 'PREV S ID=$G(^GIF("general","Z")),^GIF("general","Z")=ID+1 LOCK
+ .. I 'BATCH D
+ ... S ^PCHK(CHECK,EZ)=ID_":"_CHKDATE
+ ... S OBATCH=$P($G(^PCHK(CHECK)),":",14)
+ ... I OBATCH'="" K ^CHKBATCH(OBATCH,EZ,CHECK)
+ ... S $P(^PCHK(CHECK),":",14)=""
+ ... Q
+ .. I BATCH D
+ ... S ^CHKBATCH(CHECK,EZ)=ID_":"_CHKDATE
+ ... S CHK="" F  S CHK=$O(^CHKBATCH(CHECK,EZ,CHK)) Q:CHK=""  I $D(^PCHK(CHK)) D
+ .... S ^PCHK(CHK,EZ)=ID_":"_CHKDATE
+ .... I CHKDATE="" S ^GIF("check",CHK)=ID_":"_INS
+ .... I CHKDATE'="" S ^GIF("check",CHK,CHKDATE)=ID_":"_INS
+ ... Q
+ .. I CHKDATE="" S ^GIF(IND,CHECK)=ID_":"_INS
+ .. I CHKDATE]"" S ^GIF(IND,CHECK,CHKDATE)=ID_":"_INS
+ . S ID=(ID\1)+(PG/10000)
+ . I '$D(^TKTVB(HANDLE))#2 S ^(HANDLE)=$H
+ . S @AA@(0,"SCAN")=ID
+ . S PIC=$H_"``"_FIL_"`"_SRC_"`"_FMT_"`"_$L(B)_"`"_TYP_"`"_CHECK_SEP_DES_"`"_CHECK_"`"_CHKDATE_"`"_INS
+ . I $L(B) S ^GIF("general",ID)=PIC D SETASSOCEOB(CHECK,PIC,ID)
+ I $L(B) D
+ . S D=$S(SGM<2:1,1:$O(^GIF("general",ID,"TR"),-1)+1) F J=1:1:$L(B)-1\800+1 S ^GIF("general",ID,D)=$E(B,J-1*800+1,J*800),D=D+1
+ . I $L(B)<8500 D
+ .. S SUB="",SIZ=0 F  S SUB=$O(^GIF("general",ID,SUB)) Q:'SUB  S SIZ=SIZ+$L(^(SUB))
+ .. S $P(^GIF("general",ID),"`",2)=SIZ
+ S B="|||"
+ Q
+SETASSOCEOB(CHECK,PIC,ID) ;Link in transactions (payments)
+ N PG,K,K1,TR,TRN,TRDATA,ACC,TYP,B
+ S TYP=$P(PIC,"`",7)
+ S K="" F  S K=$O(^PCHK(CHECK,EZ,K)) Q:K=""  D
+ . S TR="" F  S TR=$O(^PCHK(CHECK,EZ,K,TR)) Q:TR=""  D
+ .. S TRDATA=$G(^TRG(EZ,TR))
+ .. S K1=$P(TRDATA,":",7),ACC=K_"/"_K1
+ .. I $$ISASSOCEOBDUP(ACC,TYP,TR,ID) Q
+ .. S TRN=$O(^GIF(ACC,TYP,TR+1),-1) I TRN#1 S TRN=$J(TRN,0,3)
+ .. S PG=ID#1 I PG=.0001 S:TRN<TR TRN=TR
+ .. S PREV=$G(^GIF(ACC,TYP,TRN)) I $P(PREV,":",7)=ID Q
+ .. I PG=.0001 S TRN=TRN+.001
+ .. S TRN=TRN+(PG/1000)
+ .. S ^GIF(ACC,TYP,TRN)=$P(PIC,"`",1,6)_"`"_ID_"`"_"TR"
+ .. S ^GIF("general",ID,"TR",TRN)=ACC
+ .. D SETRELEOBTR(TR,TRDATA,ID,PIC)
+ Q
+SETASSOCEOBTR(CHECK,PIC,ID,TR) ;Link in transactions (payments)
+ N PG,K,K1,TRN,TRDATA,ACC,TYP
+ S TYP=$P(PIC,"`",7)
+ S TRDATA=$G(^TRG(EZ,TR))
+ S K=$P(TRDATA,":",3),K1=$P(TRDATA,":",7),ACC=K_"/"_K1
+ I $$ISASSOCEOBDUP(ACC,TYP,TR,ID) Q
+ S TRN=$O(^GIF(ACC,TYP,TR+1),-1) I TRN#1 S TRN=$J(TRN,0,3)
+ S PG=ID#1 I PG=.0001 S:TRN<TR TRN=TR
+ I PG=.0001 S TRN=TRN+.001
+ S TRN=TRN+(PG/1000)
+ S ^GIF(ACC,TYP,TRN)=$P(PIC,"`",1,6)_"`"_ID_"`"_"TR"
+ S ^GIF("general",ID,"TR",TRN)=ACC
+ D SETRELEOBTR(TR,TRDATA,ID,PIC)
+ Q
+SETRELEOBTR(TR,DATA,ID,PIC) ;Link related charges
+ N PG,K,K1,TRN,ACC,TYP,D3,D4,I,DATA1,DATA3,TRANS,PREV
+ S TYP=$P(PIC,"`",7)
+ S K=$P(DATA,":",3),K1=$P(DATA,":",7),ACC=K_"/"_K1
+ S D3=":",D4="," F I=21:1:26,48:1:98 D
+ . S DATA3=$P(DATA,D3,I)
+ . S TRANS=$P(DATA3,D4,2)
+ . I 'TRANS Q
+ . I $$ISASSOCEOBDUP(ACC,TYP,TRANS,ID) Q
+ . S DATA1=$G(^TRG(EZ,TRANS))
+ . I DATA1="" Q
+ . S TRN=$O(^GIF(ACC,TYP,TRANS+1),-1) I TRN#1 S TRN=$J(TRN,0,3)
+ . S PG=ID#1 I PG=.0001 S:TRN<TRANS TRN=TRANS
+ . I PG=.0001 S TRN=TRN+.001
+ . S TRN=TRN+(PG/1000)
+ . S ^GIF(ACC,TYP,TRN)=$P(PIC,"`",1,6)_"`"_ID_"`"_"TR"
+ . S ^GIF("general",ID,"TR",TRN)=ACC
+ Q
+DELASSOCHARGEPIC(K,K1,TRCHG) 
+ D DELASSOCHARGEPIC^TKVBUT3($G(K),$G(K1),$G(TRCHG))
+ Q
+HASOTHERPAYMENTS(K,K1,TRCHG,TRPAY,ID) 
+ Q $$HASOTHERPAYMENTS^TKVBUT3($G(K),$G(K1),$G(TRCHG),$G(TRPAY),$G(ID))
+DELASSOCEOBTR(CHECK,PIC,ID,TR) ;Unlink transactions (payments)
+ N PG,K,K1,TRN,TRDATA,ACC,TYP
+ S TYP=$P(PIC,"`",7)
+ S TRDATA=$G(^TRG(EZ,TR))
+ S K=$P(TRDATA,":",3),K1=$P(TRDATA,":",7),ACC=K_"/"_K1
+ S TRN=TR F  S TRN=$O(^GIF(ACC,TYP,TRN)) Q:$P(TRN,".")'=TR  S OLD=^(TRN) D
+ . I $P(OLD,"`",7)=ID K ^GIF(ACC,TYP,TRN),^GIF("general",ID,"TR",TRN)
+ S D3=":",D4="," F I=21:1:26,48:1:98 D
+ . S DATA3=$P(TRDATA,D3,I)
+ . S TRANS=$P(DATA3,D4,2)
+ . I 'TRANS Q
+ . I $$HASOTHERPAYMENTS(K,K1,TRANS,TR,ID) Q
+ . S TRN=TRANS F  S TRN=$O(^GIF(ACC,TYP,TRN)) Q:$P(TRN,".")'=TRANS  S OLD=^(TRN) D
+ .. I $P(OLD,"`",7)=ID K ^GIF(ACC,TYP,TRN),^GIF("general",ID,"TR",TRN)
+ Q
+ISASSOCEOBDUP(ACC,TYP,TR,ID) ;Is Image a duplicate
+ N DUP,N S DUP=0
+ S N=TR F  S N=$O(^GIF(ACC,TYP,N)) Q:N=""!($P(N,".")'=TR)!(DUP)  S:$P(^(N),"`",7)=ID DUP=1
+ Q DUP
+SAVGENPIC ;Save General Pic
+ D SAVGENPIC^TKVBUT3
+ Q
+DELGENPIC ;Delete General Pic
+ D DELGENPIC^TKVBUT3
+ Q
+DELGENPICEOB ;Delete General General EOB Pic by id
+ D DELGENPICEOB^TKVBUT3
+ Q
+DELGENEOB(ID,CHK,CHKDATE,SEARCH) ;Delete General EOB Pic by check #
+ D DELGENEOB^TKVBUT3($G(ID),$G(CHK),$G(CHKDATE),$G(SEARCH))
+ Q
+DELBATCH 
+ S B=1,FN=$P(FILE,$C(175)),PIC=$G(^GIF("general",FN+.0001))
+ S BATCH=$P(PIC,"`",9),DATE=$P(PIC,"`",10)
+ I DATE="" K ^GIF("batch",BATCH)
+ I DATE]"" K ^GIF("batch",BATCH,DATE)
+ S ^CHKBATCH(BATCH,EZ)=""
+ S CHK="" F  S CHK=$O(^CHKBATCH(BATCH,EZ,CHK)) Q:CHK=""  D
+ . I DATE="" K ^GIF("check",CHK)
+ . I DATE'="" K ^GIF("check",CHK,DATE)
+ . S ^PCHK(CHK,EZ)=""
+ . Q
+ S ID=FN F  S ID=$O(^GIF("general",ID)) Q:ID=""!($P(ID,".")'=FN)  D DELGENEOB(ID,"",,0)
+ Q
+LINKGENPIC ;Link to General Pic
+ D LINKGENPIC^TKVBUT3
+ Q
+PIC I P1="SETTINGS" S B=$G(^TKVBUSER(USER,"PICS"))_"|"_$G(^TKVBUSER("ALLUSERS","PICS")) G GETE
+ I P1="ASSOC" D ASSOCGENPIC G GETE
+ I P1="LIST" D  S:RECS=1 B=$E(B,2,99999) G GETE
+ . S FILTER=$G(^TKVBUSER("CODE","DEFAULTS","WRKFLWIMAGE",0))
+ . S DATA=$P(X,"|",6),FLOV=$P(DATA,$C(230),5)
+ . S TYP=$P(DATA,$C(230)),DES=$TR($P(DATA,$C(230),2),LC,UP)
+ . I 'FLOV D
+ .. S DATE1=$P(DATA,$C(230),3) S DATE1=$$JUL^IDATE(DATE1) I DATE1<0 S DATE1=""
+ .. S DATE2=$P(DATA,$C(230),4) S DATE2=$$JUL^IDATE(DATE2) I DATE2<0 S DATE2=""
+ . I FLOV D
+ .. S (DATE1,DATE2)=""
+ .. I $P(FILTER,":")'="*" S DATE1=$H-FILTER,DATE2=+$H
+ . I P2="" Q
+ . I P2["@",$E(P2,1,2)="CH" D LISTGENEOB Q
+ . I P2="GENERAL" D LISTGENPIC Q
+ . S INT=$S($E(TYP)="@":1,1:0)
+ . K ^TEMP($J)
+ . S (A,B,C)="",RECS=1 F  S A=$O(^GIF(P2,A)) Q:A=""  D  K ^TEMP($J)
+ .. I 'INT,'FLOV,TYP]"",TYP'=A Q
+ .. I FLOV,$P(FILTER,":",2)'="*",(";"_$P(FILTER,":",2)_";")'[(";"_A_";") Q
+ .. F  S C=$O(^GIF(P2,A,C)) Q:C=""  D
+ ... S ID=$P(^GIF(P2,A,C),"`",7) I ID="",INT Q
+ ... S ITYP=$P(^GIF(P2,A,C),"`",8)
+ ... I INT S PTYP=$E(TYP,2,$L(TYP)) I PTYP]"",ITYP'=PTYP Q
+ ... I ITYP="TR",'$$ENTCHK(+P2,$S($P(P2,"/",2):$P(P2,"/",2),1:1),$P(C,".")) Q
+ ... I DES]"",DES'=$E($TR(C,LC,UP),1,$L(DES)) Q
+ ... I INT,DES]"",$P(C,".")'=DES Q
+ ... S DN=$S(ID:$P(ID,".")_$C(175)_$P($G(^GIF("general",ID)),"`",8),1:C)
+ ... S DATE=$P(^GIF(P2,A,C),"`")
+ ... I DATE1,DATE,DATE<DATE1 Q
+ ... I DATE2,DATE,DATE>DATE2 Q
+ ... I ID,$D(^TEMP($J,DN)) Q
+ ... S DATA=^GIF(P2,A,C)
+ ... S GEN=$S(ID:$G(^GIF("general",ID)),1:"")
+ ... S SIZ=$S(ID:$S($P(GEN,"`",2):$P(GEN,"`",2),1:$P(GEN,"`",6)),1:$P(DATA,"`",2))
+ ... S B=B_$C(9)_A_$C(230)_DN_$C(230)_$P(DATA,"`")_$C(230)_$P(DATA,"`",5)_$C(230)_$TR($P(DATA,"`",3,4),"`",$C(230))_$C(230)_SIZ
+ ... S ^TEMP($J,DN)=""
+ ... I $L(B)>30000 D GETM^TKVB S B="",RECS=RECS+1
+ D SETPX
+ S B="|NOPIC||",$ZT="NOGIF^TKVBUT2"
+ I ACC="" S B="GIF"_$C(230)_$G(^GIF("DEFAULT")) G GETE
+ I ACC="GENERAL" D GETGENBASEPIC G GETE
+ I TYP="" S B="" G GETE
+ I TYP="PIC",DES'[$C(175) S DES=$O(^GIF(ACC,TYP,""))
+ I DES="" S B="" G GETE
+ S GEN=0 I DES[$C(175) S PG=+$P($P(DES,$C(175),2),"PAGE_",2),DES=$P(DES,$C(175)) D
+ . I DES#1 S DES=DES+(PG/10000000) Q
+ . S DES=DES+(PG/10000),GEN=1
+ I 'GEN,'$D(^GIF(ACC,TYP,DES)) S B="" G GETE
+ I 'GEN,$P(^GIF(ACC,TYP,DES),"`",7) D GETGENPIC G GETE
+ I GEN D GETGENBASEPIC G GETE
+ S CID=1 I $G(^GIF2(0))]"" X ^(0)
+ S B=$P(^GIF(ACC,TYP,DES),"`",3)_$C(230)
+ S GL="^GIF" I $O(^GIF(ACC,TYP,DES,""))="" S GL="^GIF2(CID)"
+ S C="" F  S C=$O(@GL@(ACC,TYP,DES,C)) Q:C=""  S B=B_$G(^(C)) I $L(B)>30720 D GETM^TKVB S B=""
+ G GETE
+ ;
+GETGENPIC ;Get General Pic from Acct/Type/Name
+ D GETGENPIC^TKVBUT3
+ Q
+GETGENBASEPIC ;Get General Pic from Image#
+ D GETGENBASEPIC^TKVBUT3
+ Q
+ ;
+LISTGENPIC ;List General Pics
+ D LISTGENPIC^TKVBUT3
+ Q
+LISTGENEOB ;List General EOB Pics by Check
+ D LISTGENEOB^TKVBUT3
+ Q
+CHKOUT(ID,CHECK,CHKDATE,INS) ;Output Check
+ D CHKOUT^TKVBUT3($G(ID),$G(CHECK),$G(CHKDATE),$G(INS))
+ Q
+ASSOCGENPIC ;Associative List
+ D ASSOCGENPIC^TKVBUT3
+ Q
+ENTCHK(K,K1,ID) 
+ S ALLOW=1
+ I $G(USER)]"",$G(^TKVBUSER("LICENSE","DEMOENT")),$L($TR($P($G(^OPG(USER)),":",4),"A")) D
+ . S (L,E)="" F J=1:4:$O(^PRMG("Z"),-1) S L=L_$C(J,J+1,J+2,J+3),E=E_$C(J+64,J+65,J+66,J+67)
+ . ;S T=$TR($P($P(^OPG(USER),":",13,99),"::"),":",",") S:$E(T,$L(T))="," T=$E(T,$L(T)-1) S USERFIL="USERFIL=$C("_T_")",@USERFIL,USERFIL2="'=USERFIL",USERFIL3="=USERFIL"
+ . S USERFIL="USERFIL=$C("_$TR($P($P(^OPG(USER),":",13,99),"::"),":",",")_")",@USERFIL,USERFIL2="'=USERFIL",USERFIL3="=USERFIL"
+ . I $P($G(^OPG(USER)),":",4)["E" S USERFIL2="=USERFIL",USERFIL3="'=USERFIL"
+ . S USERFIL=$TR(USERFIL,L,E)
+ . I $G(USERFIL)]"" D
+ .. S TEST="ALLOW=$TR(USERFIL,$P($G(^PTG(K,K1)),"":"",32))"_USERFIL2,@TEST
+ .. I 'ALLOW Q
+ .. S PICEZ=+$$TRTEZ^FUNCT(ID) I 'PICEZ Q
+ .. S PICEZ=$C(64+PICEZ)
+ .. S TEST="ALLOW=$TR(USERFIL,PICEZ)"_USERFIL2,@TEST
+ Q ALLOW
+NOGIF S B="" G GETE
+ ;
+EISCP ; Prepared Files
+ I P1="DEL" D
+ . S (COUNT,DONE)=0
+ . F I=1:1  D  I DONE Q
+ .. S DATA=$P(P2,",",I) I DATA="" S DONE=1 Q
+ .. S DT=$P(DATA,":"),TM=$P(DATA,":",2),NO=$P(DATA,":",3)
+ .. I DT,TM]"",NO,$D(^EISCP(DT,TM,NO)) K ^EISCP(DT,TM,NO) S COUNT=COUNT+1
+ . S B=COUNT_" File(s) Deleted" D GETE^TKVB
+ I P1="DET" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO,0,0))
+ . F I=1:1:11 S TMP=$P(DATA,"^",I),B=$P(TMP,".")_$C(9)_$P(TMP,": ",2) s NOWRITE="webTable^webIns"  D GETM^TKVB
+ . S B="" D GETE^TKVB
+ I P1="LIST" D
+ . S TYPE=P2
+ . S B="Entity10"_$C(9)_"Date10"_$C(9)_"Time10"_$C(9)_"Form08"_$C(9)_"Grp/Pv08"_$C(9)_"Errors08"_$C(9)_"Entity Selected20"_$C(9)_"Status08" s NOWRITE="EISCP^wMap"  D GETM^TKVB  s ^header=header
+ . S ENT="" D ENTLIST(.ENT)
+ . S DT=""
+ . F  S DT=$O(^EISCP(DT),-1) Q:DT=""  S TM="" D
+ .. F  S TM=$O(^EISCP(DT,TM),-1) Q:TM=""  S NO="" D
+ ... F  S NO=$O(^EISCP(DT,TM,NO)) Q:NO=""  D
+ .... S DATA=$G(^EISCP(DT,TM,NO))
+ .... S ENT=$P(DATA,":") I ENT,'$D(ENT(ENT)) Q
+ .... I TYPE]"",$P(DATA,"***",3)'=TYPE Q
+ .... S DATE=$$DG^IDATE(DT),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)_"/"_$E(DATE,1,4)
+ .... S TIME=$$TIME(TM)
+ .... S B=DT_":"_TM_":"_NO_$C(9)_$P(DATA,":")_$C(9)_DATE_$C(9)_TIME_$C(9)_$P(DATA,":",2)_$C(9)_$P(DATA,":",5)_$C(9)_$P(DATA,":",6)_$C(9)_$P(DATA,":",7)_" "_$P(DATA,":",8)_$C(9)_$P(DATA,"***",3) 
+ .... // This call is instead of a separate call for the details
+ .... if webCall S DATA=$G(^EISCP(DT,TM,NO,0,0))  d EISCP0^wMap ;; SEND even if EMPTY   ;;F I=1:1:11 S TMP=$P(DATA,"^",I),B=B_$C(9)_$P(TMP,": ",2)
+ .... if webCall s DATA=$G(^EISCPACK(DT,TM,NO))   d EISCPACK^wMap 
+ .... s NOWRITE="webTable^webIns" 
+ .... D GETM^TKVB
+ . S B="" D GETE^TKVB
+ I P1="SEL" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$P($G(^EISCP(DT,TM,NO)),"***",1,2),CT=1
+ . S B="File^"_$P($P(DATA,":",4),"^")_":Program^"_$P(DATA,":",3)_":"
+ . S FROM=$TR($P(DATA,":",9),"*")
+ . S B=B_"Patient^From^"_FROM_",Thru^"_$P(DATA,":",10)_":"
+ . S B=B_"A/R Class^"_$P(DATA,":",11)_"^" F I=20:1:28 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Reprint^"_$P(DATA,":",12)_",From^"_$S($P(DATA,":",38):$P(DATA,":",38)_"/"_$P(DATA,":",39)_"/"_$P(DATA,":",40),1:"")
+ . S B=B_",Thru^"_$S($P(DATA,":",41):$P(DATA,":",41)_"/"_$P(DATA,":",42)_"/"_$P(DATA,":",43),1:"")
+ . S B=B_":Serv/Post Dates^"_$P(DATA,":",13)_",From^"_$S($P(DATA,":",44):$P(DATA,":",44)_"/"_$P(DATA,":",45)_"/"_$P(DATA,":",46),1:"")
+ . S B=B_",Thru^"_$S($P(DATA,":",47):$P(DATA,":",47)_"/"_$P(DATA,":",48)_"/"_$P(DATA,":",49),1:"")
+ . S B=B_":Group or Provider Id^"_$P(DATA,":",14)_":"
+ . S B=B_"Entities^"_$P(DATA,":",15)_"^" F I=29:1:37 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Claims with Errors^"_$P(DATA,":",16)_":"
+ . S B=B_"Insurance Codes^"_$P(DATA,":",17)_"^" F I=50:1:55 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Provider Codes^"_$P(DATA,":",18)_"^" F I=56:1:61 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Place of Service^"_$P(DATA,":",19)_"^" F I=62:1:70 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . D GETE^TKVB
+ I P1="SEND" D
+ . I P2["!" D
+ .. S SYS=$$SYS^SET,CDIR=$$PATH^MNU2,^EZ($I)=EZ
+ .. S PROG=$P(P2,"!"),(FLAG,FORM)=""
+ .. F  S FORM=$O(^SETFRMG(EZ,FORM)) Q:FORM=""  D  I FLAG Q
+ ... I PROG=$P(^SETFRMG(EZ,FORM),":",12) S FLAG=1
+ .. S TKVB="" D KERMIT^MNU22 ; carrier.lst
+ .. S TKVB=1 D ^MNU23 ; carrier.tab
+ .. S PRG="SETS^"_PROG_"L",TKVB("PREP")=1 D @PRG
+ .. S INIOK=1 I '$$EXIST^DFILE(CDIR_FILEI) D CHECKX^SETCOM1(PROG),INI^SETCOM1 S INIOK=$G(ER)=0 ; ini
+ .. S B="1:SEND" D GETM^TKVB
+ .. S FL="CARRIER.LST",B="***NEWFILE***:"_FL D GETM^TKVB
+ .. S B=$P(P2,"!") D GETM^TKVB
+ .. //USED TO BE PROG="MODFLCX"!(PROG="MODFLBX")!(PROG="MODGABX")
+ .. I PROG="MODFLCX" S PRG="CHECKS^"_PROG_"L",LOGON=$P($G(^SETFRMG(EZ,FORM,1)),":",2),PASSWORD=$P($G(^SETFRMG(EZ,FORM,1)),":",3),TEST=$S($P($G(^SETFRMG(EZ,FORM)),":",33)="P":"PROD",1:"TEST") D @PRG I $G(ER)="" S FL="LOGON" D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") I T U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... I T C FDEV
+ .. F FL="CARRIER.TAB",FILEI Q:FL=FILEI&('INIOK)  D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") I T U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... I T C FDEV
+ .. //USED TO BE PROG="MODFLCX"!(PROG="MODFLBX")!(PROG="MODGABX")
+ .. S B="" D GETE^TKVB
+ . I P2'["!" D
+ .. S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ .. I 'DT!(TM="")!('NO) S B="0:KEYS UNDEFINED" D GETE^TKVB Q
+ .. S SYS=$$SYS^SET,CDIR=$$PATH^MNU2,^EZ($I)=EZ,TPSEQ=""
+ .. S S=$P(^EISCP(DT,TM,NO),"***",1),FORM=$P(S,":",2),PROG=$P(S,":",3)
+ .. S TKVB="" D KERMIT^MNU22 S TKVB=1 D ^MNU23
+ .. S TKVB=1,X=$$FIL^EISCP(DT,TM,NO)
+ .. I 'X!ERR S B="0:ERROR DURING PROCESSING ("_$G(ER)_")" D GETE^TKVB Q
+ .. S B="1:SEND" D GETM^TKVB
+ .. // USED TO BE (PROG="MODFLBX")!(PROG="MODGABX") it is not needed
+ .. I PROG="MODFLCX" S PRG="CHECKS^"_PROG_"L",LOGON=$P($G(^SETFRMG(EZ,FORM,1)),":",2),PASSWORD=$P($G(^SETFRMG(EZ,FORM,1)),":",3),TEST=$S($P($G(^SETFRMG(EZ,FORM)),":",33)="P":"PROD",1:"TEST") D @PRG I $G(ER)="" S FL="LOGON" D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... C FDEV
+ .. S B="***NEWFILE***:"_$P($P(^EISCP(DT,TM,NO),":",4),"^") D GETM^TKVB
+ .. S SUB=0 F  S SUB=$O(^EISCP(DT,TM,NO,SUB)) Q:SUB=""  S B=^(SUB) D GETM^TKVB
+ .. S B="***NEWFILE***:CARRIER.LST"_$C(13,10) D GETM^TKVB
+ .. S B=$P(^EISCP(DT,TM,NO),":",3)_$C(13,10) D GETM^TKVB
+ .. S FILE="" F  S FILE=$O(^EISCP(DT,TM,NO,0,0,FILE)) Q:FILE=""  D
+ ... Q:FILE="LOGON"
+ ... S B="***NEWFILE***:"_FILE_$C(13,10) D GETM^TKVB S SUB=""
+ ... F  S SUB=$O(^EISCP(DT,TM,NO,0,0,FILE,SUB)) Q:SUB=""  S B=^(SUB)_$C(13,10) D GETM^TKVB
+ .. S B="" D GETE^TKVB
+ I P1="TYPE" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO))
+ . S RTN=$P(DATA,":",3)
+ . I RTN="" S B="PROGRAM UNDEFINED" D GETE^TKVB Q
+ . S RUNRPT=$P($G(^PRG(RTN,1)),":",7)
+ . S RUNRPT=$S(RUNRPT>2:RUNRPT,RTN["MODNEIX"&($D(^MSCG("NEICW"))):2,RTN["MODUBX"&($D(^MSCG("UBXW"))):2,RTN["MODNJDX"&($D(^MSCG("NJDW"))):2,1:RUNRPT)
+ . I RUNRPT="",RTN["MODNEIX"!(RTN["MODUBX")!(RTN["MODNJDX") S RUNRPT=1
+ . I RUNRPT="" F I=1:1 S T=$T(DATA+I^MNU23) Q:$P(T,":",2)=""  I RTN[$P(T,":",2) S RUNRPT=1
+ . S B=$S(RUNRPT:RUNRPT,1:0)
+ . D GETE^TKVB
+ I P1="STAT" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO))
+ . S B=$P(DATA,"***",3)
+ . D GETE^TKVB
+ Q
+ ;
+SETEISCP ; Prepared Files
+ D SETEISCP^TKVBUT4
+ Q
+LM ; get Letter Module Prefs
+ G LM^TKVBUT4
+SETLM ; set Letter Module Prefs
+ G SETLM^TKVBUT4
+ ;
+TIME(H) 
+ Q $$TIME^TKVBUT4(H)
+ ;
+POSTDT ; Posting Date Hold/Release
+ G POSTDT^TKVBUT5
+SETPOSTD ; Posting Date Set Hold/Release
+ G SETPOSTD^TKVBUT5
+SETCOPAY(OUT) ;SET COPAY
+ D SETCOPAY^TKVBUT4(.OUT)
+ Q
+SETRECALL(OUT) ;SET RECALL
+ D SETRECALL^TKVBUT4(.OUT)
+ Q
+ENTLIST(ENT) ;Entity Dropdown List
+ D ENTLIST^TKVBUT4(.ENT)
+ Q
+ 
+
+TKWEBH^INT^0^65003,60357.81463^0
+TKWEBH ;PG&A,TK-WEB,1.3,HTML CONTROL;08OCT97  18:08 [ 10/15/97   8:12 AM ];Thu, 13 Sep 2018  10:54;;07JAN2000  22:33
+ ;;Copyright (C) 1997 Patterson, Gray and Associates, Inc.
+ ;
+M3 S TRACE=1,LOG=1 I '$D(^TKWEBC("Control")) S ^("Control")="1,,1,,5,,80"
+ S ADDR=$P($ZDEV($P),"~"),OS="M3",TCP=0 G cont
+ ;
+accept(%ddb,CON,TRACE,LOG) 
+ I %ddb=0 S OS="M11",TCP=0,ADDR=$ZU(111,0),ADDR=$A(ADDR)_"."_$A(ADDR,2)_"."_$A(ADDR,3)_"."_$A(ADDR,4) H:$D(^TKWEMM("ATTACK",ADDR))  U TCP:(::"AS":$C(10)) G cont
+ S TCP=56,OS="MSM"
+ V %ddb+46::$J-$V(272,-4,4):2 S addr=$V(%ddb+16,-3,0),ADDR=$V(addr+13,-3,$V(addr+12,-3,1),9) U 56:$ZH(+%ddb) G cont
+ ;
+uaccept(CON,TRACE,LOG,ADDR,TCP,OS) 
+cont S:'$D(TEST) $ZT="ERROR^TKWEBH2"
+ S CNT=1,CR=$C(13,10),TMO=15 D INIT,TDATE($H) ; S RLC=$E(UP,CON#26+1)_$E(UP,CON\26#26+1)_"_"_$E(UP,CON\676#26+1)_$E(UP,CON\17576#26+1)
+ I OS="M3" L +CONNECT S (CON,^TKWEBC("CONNECT"))=$G(^TKWEBC("CONNECT"))+1 L -CONNECT
+ S SMT=MT,TZ=$G(^TKWEBC("TimeZone")) D STL I '$D(THANDLE) G PROCESS
+ S (Y,LM,MM,L,EXP)="",(PC,FL)=0,TM=$H,%("ADDRESS")=ADDR G P1
+ ;
+PROCESS ;
+ K LL,%,ACS,TYPE S (Y,LM,MM,L,EXP,X)="",(PC,FL)=0,%("ADDRESS")=ADDR,TMO(3)=$P($H,",",2)
+ I ADDR'="",$D(^TKNOWEB(ADDR)) H
+ U TCP R X:TMO S TM=$H I OS="DSM4",ADDR'="" S X=ADDR_X,ADDR=""
+ X $S(OS="M3":"S C=$ZC",OS="MSM":"S C=$ZC X:C=1 ""R X:TMO S C=$ZC""",OS="M11":"S C=$ZA#8>3 S:$A($ZB)=10 X=X_$ZB",1:"S C=0")
+P1 G:X="" ERRD:C,ERRT:'$T,ERRE:X="" F  Q:$TR(X,$C(13))[$C(10,10)  Q:C  S T=$P(TM,",",2)-$P($H,",",2)+TMO Q:T<0  R Y:1 S X=X_Y X $S("MSM,M3"[OS:"S C=$ZC",OS="M11":"S C=$ZA#8>3 S:$A($ZB)=10 X=X_$ZB",1:"S C=0")
+ G:C ERRD S W=X,X=$TR(X,$C(13)) G:X'[$C(10,10) ERRL
+ I X["admin.dll"!(X["system32") S ^TKWEBC("VIRUS")=$G(^TKWEBC("VIRUS"))+1 H
+ D PARSE I $D(%("CONTENT-LENGTH:")) D GETBODY
+ I $TR($G(%("CONNECTION:")),UP,LC)["keep-alive" S PC=1
+ S COOKID=$P($G(%("COOKIE:")),"=",2)
+ G GET:CMD="GET",GET:CMD="HEAD",POST:CMD="POST",PUT^TKWEBH1:CMD="PUT",OPTIONS:CMD="OPTIONS",PROPFIND:CMD="PROPFIND" G ERRC
+ ;
+GETBODY I W[$C(13,10,13,10) S Y=$P(W,$C(13,10,13,10),2,999),X=$P(W,$C(13,10,13,10))
+ E  S Y=$P(W,$C(10,10),2,999),X=$P(W,$C(10,10))
+ G:%("CONTENT-LENGTH:")>STL GETB1^TKWEBPUT
+ F  H 0 Q:$L(Y)'<%("CONTENT-LENGTH:")  S T=$P(TM,",",2)-$P($H,",",2)+TMO Q:T<0  R y:0 S Y=Y_y X $S("MSM,M3"[OS:"S C=$ZC",OS="M11":"S C=$ZA#8>3 S:$A($ZB)=10 Y=Y_$ZB",1:"S C=0") Q:C
+ S %("BODY")=Y Q
+ ;
+GET S ST=200 D FILE I "M3CONTROL,SCONTROL,CONFIG"[DIR G CONTROL^TKWEBH1:DIR'=""
+ I FLN'[".H",URI_FLN["?" G PARSEY^TKWEBH1
+ I FLN?1A1":".E G FILE^TKWEBH1
+ I FLN?1.AN1"^"1A.E G GLOB^TKWEBL
+ I FLN[".H",$P(FLN,".",2)["C",'$D(%("COOKIE:")) S COOKIE="CID="_CON_"; expires="_$$GMT($H+365,TZ)_"; path=/",^TKWEBL("COOKIE",CON)=DIR_","_FLN_","_ADDR
+ I FLN[".HTP",'$D(%("AUTHORIZATION:")) S ST=401 G GET1
+GET4 I $D(@GLB)=0 D 404^TKWEBH2 G GET1
+ S XX=@GLB,FL=$P(XX,"`",3),TYPE=$P(XX,"`",9) I FL["M",URI'["?NOD" D MODIFY^TKWEBL G GET2
+ I $G(%("CACHE-CONTROL:"))["max-stale=0" G GET2
+ S A=$G(%("IF-MODIFIED-SINCE:")) I A]"" D CMP I  S ST=304,FL=0 D WRITE G AGAIN
+GET2 S LM=$P(XX,"`",4)
+GET1 D WRITE
+AGAIN I PC=2 S CNT=CNT+1,TMO=5 G PROCESS
+ Q
+ ;
+POST D FILE I $G(URI)["HOME.HTM" S ^TKWEBC("ATTACK",ADDR)=$G(^TKWEBC("ATTACK",ADDR))+1_" "_$H_" " H
+ G PARSEY^TKWEBH1
+ ;
+WRITE D:CMD="HEAD" HEAD^TKWEBH2 I $G(DEVR)["SKIPWRITE" X:$D(DEVD) DEVC K DEVD,DEVR G TRACE
+ S L=$L($G(LL))+FL I $D(LL)>1 S A="" F  S A=$O(LL(A)) Q:A=""  S L=L+$L(LL(A))
+ D HTML W:$L($G(LL)) LL I $D(LL)>1 S A="" F  S A=$O(LL(A)) Q:A=""  W LL(A)
+ I FL,$D(SKP) S A=$O(@GLB@(0)),A=0 F  S A=$O(^(A)) Q:A=""  W $S($D(SKP(A)):SKP(A),1:^(A)) I $D(SKP(A,0)) X SKP(A,0) I $D(@GLB@(0))
+ I FL,'$D(SKP),GLB["^" S A=$O(@GLB@(0)),A=0 F  S A=$O(^(A)) Q:A=""  W $G(^(A))
+ I FL,'$D(SKP),GLB'["^" S A=$O(@GLB@(0)),A=0 F  S A=$O(@GLB@(A)) Q:A=""  W $G(@GLB@(A))
+ I $D(DEVD),FL S:'$G(NOTRAP) $ZT="WRITER^TKWEBH" X DEVR F   U DEV R A#2053 S @ZC U TCP W A S A="" Q:Z
+WW2 K WRITER U TCP W ! I $D(DEVD) X DEVC K DEVD
+ K SKP,LL I FL K:$G(GLB)["TKTWEB" @GLB
+ D TRACE Q
+WRITER S WRITER=1 S $ZT="ERROR^TKWEBH2" U TCP W:1 A S A="" G WW2
+ Q
+ ;
+PROPFIND H:$G(CNT)>5  D FILE S ST=207,TYPE="text/xml" S:'$D(%("AUTHORIZATION:")) ST=401 G GET1
+OPTIONS S ST=200 D FILE 
+ S OTHERMM="OPTIONS, TRACE, GET, HEAD, POST, PUT, DELETE, PROPFIND, COPY, MOVE, MKCOL, PROPPATCH",OTHERMM="Allow: "_OTHERMM_CR_"Public: "_OTHERMM_CR_"DAV: 1"_CR 
+ S OTHERMM=$G(OTHERMM)_"Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept"_$C(13,10)
+ G GET1
+ ;
+STL S STL=$S($D(^TKWEBC("MAXSTRING")):^("MAXSTRING"),1:16384) Q
+ ;
+HTML U TCP S ST=$$STATUS(+ST),MM="HTTP/1.1 "_ST_CR
+ I +ST=401 S MM=MM_"WWW-Authenticate: Basic Realm="""_$S($G(AUT)]"":AUT,1:"tkweb")_""""_CR I URI?1"/".E1"/" S ST=404 G HTML
+ S TYPE=$S($G(TYPE)]"":TYPE,$D(LL):"text/html",FLN[".HQX":"application/mac-binhex40",FLN[".H":"text/html",FLN[".JP":"image/jpeg",FLN[".G":"image/gif",FLN[".PN":"image/png",FLN[".IC":"image/ico",FLN[".B":"image/bmp",FLN["GIF":"image/gif",1:"")
+ S:TYPE="" TYPE=$S(FLN[".SVG":"image/svg+xml",1:"")
+ S:TYPE="" TYPE=$S(FLN[".BIN":"application/x-macbinary",FLN[".MP3":"audio/x-mpeg",FLN[".HLP"!(FLN[".CHM"):"application/mshelp",FLN[".PDF":"application/pdf",FLN[".RA":"audio/x-pn-realaudio",1:"")
+ S:TYPE="" TYPE=$S(FLN[".DOC":"application/msword",FLN[".RTF":"application/msword",FLN[".XSL":"application/xslt+xml",1:"")
+ S:TYPE="" TYPE=$S(FLN[".EXE":"application/octet-stream",1:"")
+ S:TYPE="" TYPE=$S(FLN[".JS":"text/javascript",FLN[".CSS":"text/css",FLN[".RM":"application/vnd.rn-realmedia",FLN[".M3":"application/m3",FLN[".ZIP":"application/zip",FLN[".HTA":"application/hta",1:"text/html")
+ ; I FLN[".ZIP",$G(%("ACCEPT-ENCODING:"))["gzip" S MM=MM_"Content-Encoding: gzip"_CR,TYPE="application/x-javascript"
+ S MM=MM_"Content-Type: "_TYPE_CR
+.
+ I $G(DIR)="HELP" S MM=MM_"Cache-Control: no-cache, no-store, must-revalidate"_CR
+.
+ S MM=MM_"Server: TKWEB/1.1"_CR_"Date: "_$$GMT($H,TZ)_CR
+ I L'<0 S MM=MM_"Content-Length: "_L_CR
+ S MM=MM_$G(OTHERMM) I $D(COOKIE) S MM=MM_"Set-Cookie: "_COOKIE_CR
+  i CMD="OPTIONS" D
+ . S MM=MM_"Access-Control-Allow-Headers: Origin, X-Requested-With, Content-Type, Accept"_CR
+ . S MM=MM_"X-Content-Type-Options: nosniff"_CR
+ . S MM=MM_"X-Frame-Options: SAMEORIGIN"_CR
+ . S MM=MM_"X-XSS-Protection: 1; mode=block"_CR
+ . S MM=MM_"Access-Control-Allow-Origin: *"_CR
+ S:LM]"" MM=MM_"Last-Modified: "_LM_CR S:$G(EXP)]"" MM=MM_"Expires: "_EXP_CR S:PC=1 MM=MM_"Connection: Keep-Alive"_CR,PC=2 W MM,CR
+ Q
+ ;
+TRACE G:'TRACE T1 S ^TKWEBT(-CON,CNT)=$E(X,1,STL) M ^TKWEBT(-CON,CNT)=% I CON_" "["000 " J CLN^TKWEBH2
+ F AA="ST","LL","PC","GLB","L","FL","FLN","DIR","URI","COOKIE","LM","EXP","TYPE","ERROR","RLC" I $G(@AA)'="" S ^TKWEBT(-CON,CNT,AA)=@AA
+ S ^TKWEBT(-CON,CNT,"JOB")=$J,^("JULIAN")=$H S:$G(TMO(3)) ^("DURATION")=$P($H,",",2)-TMO(3)
+T1 Q:'LOG  S D="" F AA="CON","CNT","ADDRESS","CMD","FLN","ST","L","CONNECTION:","USER-AGENT:","REFERER:","DTM","RLC","DIR","FROM:" S D=D_"`"_$S($D(%(AA)):$E(%(AA),1,80),AA'[":":$G(@AA),1:"")
+ S ^TKWEBL($S(ADDR="":"LOGD",$D(^TKWEBC("LOCAL",ADDR)):"LOGDL",1:"LOGD"),-$H,-(CON*100+CNT))=$E(D,2,510)_"`"_($P($H,",",2)-$G(LTS))
+ I $G(%("FROM:"))]"" S ^TKWEBL("FROM:",%("FROM:"))=$G(DIR)
+ Q:'$D(ST)  Q:ST>399
+ I $G(ADDR)]"" S $P(^TKWEBL("STATS",YR,"ADDR",ADDR),"+",SMT)=$P($G(^TKWEBL("STATS",YR,"ADDR",ADDR)),"+",SMT)+1 I '$D(^TKWEBL("ADDR",ADDR)) S ^(ADDR)="" J RLOG^TKWEBN(ADDR)
+ S AA=$G(%("USER-AGENT:")) I AA]"" S $P(^TKWEBL("STATS",YR,"BROWSER",AA),"+",SMT)=$P($G(^TKWEBL("STATS",YR,"BROWSER",AA)),"+",SMT)+1
+ Q:$G(ACS)=""  S $P(^TKWEBL("STATS",YR,"FILE",DIR_"/"_FLN),"+",SMT)=$P($G(^TKWEBL("STATS",YR,"FILE",DIR_"/"_FLN)),"+",SMT)+1
+ S $P(^TKWEBL("STATS",YR,"TOTAL",DIR_" #FILES"),"+",SMT)=$P($G(^TKWEBL("STATS",YR,"TOTAL",DIR_" #FILES")),"+",SMT)+1
+ S $P(^TKWEBL("STATS",YR,"TOTAL",DIR_" #BYTES"),"+",SMT)=$P($G(^TKWEBL("STATS",YR,"TOTAL",DIR_" #BYTES")),"+",SMT)+$L(MM)+L+1
+ Q
+ ;
+PARSE I X["%" S B=X,X=$P(B,"%") F J=2:1:$L(B,"%") S X=X_$C(+$$ZH^TKWEBH1($E($P(B,"%",J),1,2)))_$E($P(B,"%",J),3,9999)
+ S %("COMMAND")=$P(X,$C(10)),CMD=%("COMMAND") F J=2:1:$L(X,$C(10)) S B=$P(X,$C(10),J) Q:B=""  S C=$P(B," ") I $L(C)<40,C]"" S %($TR(C,LC,UP))=$P(B," ",2,999)
+ S Y=$TR(Y,$C(13)) I $L(Y) S %("BODY")=$E(Y,1,STL)
+ S J=$L(CMD," "),HTTP=$P(CMD," ",J) S:J=2 J=3 S URI=$P(CMD," ",2,J-1)
+ S CMD=$TR($P(CMD," "),LC,UP) Q
+ ; 
+FILE I URI="/" D DEF
+ S DATA=$P(URI,"?",2,99),URI=$TR($P(URI,"?"),LC,UP),GLB="DUMMY" S:DATA]"" DATA="?"_DATA
+ I $E(URI)="/" S DIR=$P(URI,"/",2),FLN=$P(URI,"/",3,9)
+ E  S DIR=$P(URI,"/",4),FLN=$P(URI,"/",5,9)
+ I DIR?1A1":" S FLN=DIR_"/"_FLN Q
+ I DATA]"" S:FLN="" FLN=DIR,DIR=""
+ K GWEB2 S GWEB="^TKWEBF" I DIR]"" D
+ . I $D(^TKWEBF("ALTERNATE2",DIR)) S GWEB2=^(DIR)
+ . I $D(^TKWEBF("ALTERNATE",DIR)) S GWEB=^(DIR)
+ I FLN="" S DIR=$S(DIR="":"",$D(@GWEB@("PAGES",DIR)):DIR,$D(@GWEB@("ALIAS",DIR)):^(DIR),1:DIR),FLN=$S(DIR="":$S(OS="M3":"?M3",1:"?")_"INTRO",$P($G(@GWEB@("PAGES",DIR)),"\",5)]"":$P(^(DIR),"\",5),1:DIR)
+ I DIR=FLN,DIR'["?" Q:DIR="M3CONTROL"  D DEF S DIR=$P(URI,"/",2)
+ G GBUILD^TKWEBGIF:FLN["GIF(" S:DIR["^" FLN=DIR I FLN?.AN1"^"1.A.E S:DATA]"" FLN=FLN_DATA S GLB=FLN Q
+ ;  I FLN["?" S:FLN[".HTM?"!(FLN[".HTML?") RLC=$P(FLN,"?",2,9),FLN=$P(FLN,"?")
+ I FLN["/" D
+ . I DIR]"",$D(GWEB2),$D(@GWEB2@("PAGES",DIR,$TR(FLN,"/","\"))) S FLN=$TR(FLN,"/","\"),GWEB=GWEB2 Q
+ . I DIR]"",$D(@GWEB@("PAGES",DIR,$TR(FLN,"/","\"))) S FLN=$TR(FLN,"/","\") Q
+ . S RLC=$P(FLN,"/"),FLN=$P(FLN,"/",2,9) I DIR]"",$D(GWEB2),$D(@GWEB2@("PAGES",DIR,$TR(FLN,"/","\"))) S FLN=$TR(FLN,"/","\"),GWEB=GWEB2 Q
+ . I DIR]"",$D(@GWEB@("PAGES",DIR,$TR(FLN,"/","\"))) S FLN=$TR(FLN,"/","\") Q
+ . S FLN=$P(FLN,"/",$L(FLN,"/"))
+ I DATA]"" S FLN=FLN_DATA
+ Q:DIR=""  I $P($G(@GWEB@("PAGES",DIR)),"\",6)="ON" G DEAC^TKWEBH2
+ S GLB="@GWEB@(""PAGES"","""_DIR_"""",A=$P(FLN,"?"),ACS=$G(@GWEB@(98,DIR))
+ S:A'["." A=A_".HTM" S A=A_$S($D(@GWEB@("PAGES",DIR,A)):"",$D(@GWEB@("PAGES",DIR,A_"L")):"L",1:"") I $P(A,".",2)="HTM",$G(%("USER-AGENT:"))["MS",$D(@GWEB@("PAGES",DIR,A_"I")) S A=A_"I"
+ S GLB=GLB_","""_$TR(A,"""")_""")" Q
+ ;
+DEF S URI=$TR($G(%("HOST:")),LC,UP) S:$E(URI,$L(URI))="." URI=$E(URI,1,$L(URI)-1) S URI=$S(URI="":$G(^TKWEBF("DEFAULT","HOME")),$D(^TKWEBF("HOME",URI)):^(URI),1:$G(^TKWEBF("DEFAULT","HOME")))
+ Q
+CMP I $P(A,";")=$P(XX,"`",4) Q
+ Q
+ I $P(XX,"`",5) S A=$$DTEX($P(A,";")) I $P(XX,"`",5)']A
+ Q
+DTEX(A) S A=$TR(A,LC,UP)
+ I A["-" S A=$P(A,",",2) Q $P(A,"-",3)+1900*100+$$MON($P(A,"-",2))*100+$P(A," ",2)_" "_$P(A," ",3)
+ I A["," S A=$P(A,",",2) Q $P(A," ",4)*100+$$MON($P(A," ",3))*100+$P(A," ",2)_" "_$P(A," ",5)
+ S:$E(A)=" " A=$E(A,2,99) Q $P(A," ",6)*100+$$MON($P(A," ",2))*100+$P(A," ",4)_" "_$P(A," ",5)
+ ;
+MON(X) Q $F("JANFEBMARAPRMAYJUNJULAUGSEPOCTNOVDEC",X)\3
+ ;
+GMT(X,T) ;($H,timezone)
+ N K,Y,D,M S T=$P(X,",",2)+(-T*3600) S:T<0 X=X-1,T=T+86400  S:T>86400 X=X+1,T=T-86400
+ S K=X>21608+305+X,Y=4*K+3\1461,D=K*4+3-(1461*Y)+4\4,M=5*D-3\153,D=5*D-3-(153*M)+5\5,M=M+2,Y=M\12+Y-60,M=M#12+1,DT=1900+Y*100+M*100+D
+ S D=$P("Mon,Tue,Wed,Thu,Fri,Sat,Sun",",",X+3#7+1)_", "_D_" "_$P("Jan,Feb,Mar,Apr,May,Jun,Jul,Aug,Sep,Oct,Nov,Dec",",",M)_" "_(1900+Y)
+ S M=T\60,M=$E(M\60+100,2,3)_":"_$E(M#60+100,2,3)_":"_$E(T#60+100,2,3) Q D_" "_M_" GMT"
+ ;
+ ;
+INIT S LC="abcdefghijklmnopqrstuvwxyz",UP="ABCDEFGHIJKLMNOPQRSTUVWXYZ" Q
+ ;
+STATUS(ST) Q ST_$P($T(@ST),";",2)
+200 ; OK
+201 ; Created
+202 ; Accepted
+204 ; No Content
+207 ; Multi-Status
+301 ; Moved Permanently
+302 ; Moved Temporarily
+303 ; See Other
+304 ; Not Modified
+400 ; Bad Request
+401 ; Unauthorized
+403 ; Forbidden
+404 ; Not Found
+500 ; Internal Server Error
+501 ; Not Implemented
+502 ; Bad Gateway
+503 ; Service Unavailable
+ ;
+ERRC S ER="CMND" G ERR
+ERRT Q:CNT>1  S ER="TIMEOUT" G ERR
+ERRD K:$G(GLB)["TKTWEB" @GLB Q
+ERRL S ER="LENGTH" G ERR
+ERRE S ER="EMPTY" G ERR
+ERR D PARSE S %("ST")="ERROR-"_ER D TRACE Q
+ ;
+TDATE(X) D DATE,TIME S DTM=$P(DT,"/",1,2)_" "_LTM
+ S DTMA=$P("Thursday,Friday,Saturday,Sunday,Monday,Tuesday,Wednesday",",",X#7+1)_"  "_$P("January,February,March,April,May,June,July,August,September,October,November,December",",",MT)
+ S DTMA=DTMA_" "_+$P(DT,"/",2)_$S($P(DT,"/",3)<30:", 20",1:", 19")_$P(DT,"/",3)_"  "_TMA Q
+TIME S LTS=$P(X,",",2),LTM=$E(LTS\3600+100,2,3)_":"_$E(LTS#3600\60+100,2,3)_":"_$E(LTS#60+100,2,3),TMA=$S(LTM>12:LTM-12,1:+LTM)_":"_$P(LTM,":",2)_$S(LTM>11:" PM",1:" AM") Q
+ ;         
+DATE S K=X>21608+305+X,YR=4*K+3\1461,D=K*4+3-(1461*YR)+4\4,MT=5*D-3\153,D=5*D-3-(153*MT)+5\5,MT=MT+2,YR=MT\12+YR+1840,MT=MT#12+1
+ S DT=YR+100*100+MT*100+D,DT=$E(DT,5,6)_"/"_$E(DT,7,8)_"/"_$E(DT,3,4) K K,D Q
+ ;
+TD(X) D TDATE(X) Q DTMA
+LAST ;TKWEB
+last D INIT,TDATE($H) S W=$O(^TKWEBT("")) Q:W=""  S X=$O(^TKWEBT(W,""),-1) Q:X=""  S W=$NA(^(X)) S X=@W
+ I $G(last)["^TKWEBT" S W=last,X=@W
+ I $D(@W@("BODY")) S X=X_$C(13,10,13,10)_@W@("BODY")
+ S (Y,LM,MM,L,EXP)="",ADDR=@W@("ADDRESS"),(LOG,TRACE,TCP,PC,FL,TZ,CNT)=0,TM=$H,%("ADDRESS")=ADDR,OS=$G(^TK("OS")),CR=$C(13,10),NOTRAP=1 D STL
+ S W=X G P1+3
+ ;
+show S (la,la2)="" f  H 2 S A=$O(^TKWEBT("")) S:A'=la la=A,la2="" S A=$O(^TKWEBT(la,""),-1) I A'=la2 W ! F A=la2+1:1:A S la2=A W $ZTIME($P($H,",",2)),?13,$P(^TKWEBT(la,A)," ",1,2),!,$G(^(A,"BODY")),!
+ q
+
+wMap^INT^0^64960,51411.184258^0
+wMap ;
+	q
+EISCP  ;
+		s header="DATETIMENO:entity:date:time:form:groupprov:errors:entitysel:status:FILEINFO:ACK"
+		;;d EISCP0
+		q
+EISCP0  ; record ending in (dat,time,number,0,0)	
+		; Creating an object that will be under the key fileInfo	
+		n t,t1,vec,I
+		s t="filename:submitterid:senderid:fileid:filesize:billingdate:submitwitherror:totalclaims:totalamt:nosegment:typeclaims"
+		F I=1:1:11 q:I>$l(t,":")  S t1=$P(DATA,"^",I) s vec($p(t,":",I))=$P(t1,": ",2)  ;;S TMP=$P(DATA,"^",I),B=B_$C(9)_$P(TMP,": ",2)
+		d getJSON
+.
+		
+		q
+EISCPACK ;
+	    ; Unfortunately this global has inconsistent delimeters
+	    ; Creating an object that will be under the key ACK 
+	    n vec,t
+	    s vec("dateTime")=$p(DATA,$c(9),1)
+	    s vec("XX")=$p(DATA,$c(9),2)
+	    s t=$p(DATA,$c(9),3)
+	    s vec("ITS")=$p(t,",",1)
+	    s vec("ID")=$p(t,",",2)
+	    s vec("created")=$p(t,",",3)
+	    s vec("file")=$p(t,",",4)
+	    s vec("NO")=$p(t,",",5)
+	    
+	    s vec("result")=$p($p(t,$c(10),1),",",6)
+	    s vec("operator")=$p($p(t,$c(10),2),$c(9),1)
+	    s vec("sent")=$ZD($p($p(DATA,$c(9),4),":",2))
+	 	d getJSON
+		q
+getJSON	;
+		D TJSON^TKAAUTIL($NA(vec),$NA(RESULT),$NA(ERROR))
+	  	s t="RESULT"
+	    s B=B_$c(9)
+	    f  s t=$q(@t) q:t=""  s B=B_@t
+	    q
+
+webEntry^INT^1^64957,36000.923516^0
+webEntry ;
+	     if $g(webItem)="HDR" d webHeader^webIns 
+	     
+	     if $g(webItem)="BODY" d webTable^webIns  
+
+webIns^INT^0^65016,50355.571487^0
+webIns ;
+	q
+	; Prepared files - web call 
+PREPFILES  ; tkweb
+		   ; TODO check security. 
+list	   ;
+ 	    ;;d setVars^FUNCT4
+ 	   ; TODO   - TYPE =???  ENT=????
+	   S TYPE=""
+	   ;;   1:5:MODNEIX:neix.clm^neicwset.ini:G:Y:A::***AAA:R:I:Y:A:G:A:Y:A:A:A:4:6:7:8:11:12:22:25:26::::::::::06:17:18:10:18:18***SCH
+	   S ENT(1)=""
+	  s ctr=0
+	  N JSON 
+	  ;S JSON("HEADER")="Entity"
+	  ;S JSON("HEADER")="Date"
+	  ;S JSON("HEADER")="Time"
+	  ;S JSON("HEADER")="Form"
+	  ;S JSON("HEADER")="Grp/Pv"	  	  
+	  ;S JSON("HEADER")="Errors"
+	  ;S JSON("HEADER")="Entity Selected"	  	  
+	  ;S JSON("HEADER")="Status"	  	  
+	  s dt=""
+	  f  {
+		  S dt=$O(^EISCP(dt),-1) 
+		  q:dt=""
+		  s tm=""
+		  f  {
+			  s tm=$O(^EISCP(dt,tm),-1)
+			  q:tm=""
+			  s no=""
+			  f  {
+				   S no=$O(^EISCP(dt,tm,no))
+				   q:no=""
+				   S DATA=$G(^EISCP(dt,tm,no))
+				   S ent=$P(DATA,":") 
+				   i ent,'$D(ENT(ent)) continue
+				   I TYPE]"",$P(DATA,"***",3)'=TYPE continue
+				   S DATE=$$DG^IDATE(dt),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)_"/"_$E(DATE,1,4)
+				   S TIME=$$TIME(tm)
+	  			  ;;   1:5:MODNEIX:neix.clm^neicwset.ini:G:Y:A::***AAA:R:I:Y:A:G:A:Y:A:A:A:4:6:7:8:11:12:22:25:26::::::::::06:17:18:10:18:18***SCH
+				   i $i(yyy)
+				   s noc="File"_yyy
+				   s JSON(noc,"date")=$ZD(dt)
+				   s JSON(noc,"time")=tm
+				   s JSON(noc,"no")=no
+				   s JSON(noc,$na(entity))=$p(DATA,":")
+				   s JSON(noc,$na(form))=$p(DATA,":",2)
+				   
+				   	
+				   s JSON(noc,$na(groupprov))=$p(DATA,":",5)
+				   s JSON(noc,$na(errors))=$p(DATA,":",6)
+				   s JSON(noc,$na(entitysel))=$p(DATA,":",7)
+				   s JSON(noc,$na(selections))=$p(DATA,"***",2)
+				   s JSON(noc,$na(status))=$p(DATA,"***",3)
+				   
+				   b:noc=77
+				   
+				   
+.
+			  }			  
+		  }		  
+	  }
+	  
+      D TJSON^TKAAUTIL($NA(JSON),$NA(RESULT),$NA(ERROR))
+      s t=""  f  s t=$o(RESULT(t)) q:t=""  w RESULT(t)
+      q
+	  
+webHeader ;
+		 ;;								Entity 2			date3		time4		form5			   group/prv6		erros7				entityselected8     xxx9				status10
+		 ;;B=DT_":"_TM_":"_NO_$C(9)_$P(DATA,":")_$C(9)_DATE_$C(9)_TIME_$C(9)_$P(DATA,":",2)_$C(9)_$P(DATA,":",5)_$C(9)_$P(DATA,":",6)_$C(9)_$P(DATA,":",7)_" "_$P(DATA,":",8)_$C(9)_$P(DATA,"***",3)
+		
+		s header="DATETIMENO:entity:date:time:form:groupprov:errors:entitysel:status:"
+		s header=header_"filename:submitterid:senderid:fileid:filesize:billingdate:submitwitherror:totalclaims:totalamt:nosegment:typeclaims"
+		
+		
+		q
+		s result("header",1)="DATETIMENO"
+		s result("header",2)="entity"
+		s result("header",3)="date"
+		s result("header",4)="time"
+		s result("header",5)="form"
+		s result("header",6)="groupprov"
+		s result("header",7)="errors"
+		s result("header",8)="entitysel"
+		s result("header",9)="status"
+.
+				
+		q		
+.
+		
+.
+webTable ;
+		n i,t,file,data
+		s ctr=ctr+1
+		;;s ^GJG(($ZP(^GJG(""))+1))=B
+		;;	b:B["COMP"   
+	    f i=1:1:$l(B,$c(9)) s data=$p(B,$c(9),i)   d JSON("",ctr,data,i)
+        q
+JSON(key,ctr,data,idx)
+		;;i '$d(result("header",idx)) s result("header",idx)=$E("ABCDEFGHIJKLMNOPQRSTUVWXYZ",idx)
+.
+		i $p(header,":",idx)="" s $p(header,":",idx)=$E("ABCDEFGHIJKLMNOPQRSTUVWXYZ",idx)
+		s HDR=$p(header,":",idx) s:HDR="" HDR="noneERR"
+		n noc
+		s noc=key_ctr
+		s JSON("data",noc,HDR)=$tr(data,$C(10,13),"")
+		q 
+.
+	  
+ D 		
+ . S DT=""
+ . F  S DT=$O(^EISCP(DT),-1) Q:DT=""  S TM="" D  q:ctr>4
+ .. F  S TM=$O(^EISCP(DT,TM),-1) Q:TM=""  S NO="" D
+ ... F  S NO=$O(^EISCP(DT,TM,NO)) Q:NO=""  D
+ .... S DATA=$G(^EISCP(DT,TM,NO))
+ .... S ENT=$P(DATA,":") I ENT,'$D(ENT(ENT)) Q
+ .... I TYPE]"",$P(DATA,"***",3)'=TYPE Q
+ .... S DATE=$$DG^IDATE(DT),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)_"/"_$E(DATE,1,4)
+ .... S TIME=$$TIME(TM)
+ .... S B=DT_":"_TM_":"_NO_$C(9)_$P(DATA,":")_$C(9)_DATE_$C(9)_TIME_$C(9)_$P(DATA,":",2)_$C(9)_$P(DATA,":",5)_$C(9)_$P(DATA,":",6)_$C(9)_$P(DATA,":",7)_" "_$P(DATA,":",8)_$C(9)_$P(DATA,"***",3)
+ .... D SetJSON(.JSON,"File",ctr,B)
+ .... S ctr=ctr+1
+ . S B="" 
+ D TJSON^TKAAUTIL($NA(JSON),$NA(RESULT),$NA(ERROR))
+ N A S A="",STR="" F  S A=$O(JSON(A)) Q:A=""  S STR=STR_JSON(A)
+ Q
+ ;
+SetJSON(A,KEY,ctr,V)
+	N T F T=1:1:$L(V,$C(9)) S A(KEY,$na(T),T)=$P(V,$C(9),T)
+	Q
+.
+.
+.
+.
+.
+.
+.
+.
+.
+EISCP ; Prepared Files
+.
+.
+ I P1="DEL" D
+ . S (COUNT,DONE)=0
+ . F I=1:1  D  I DONE Q
+ .. S DATA=$P(P2,",",I) I DATA="" S DONE=1 Q
+ .. S DT=$P(DATA,":"),TM=$P(DATA,":",2),NO=$P(DATA,":",3)
+ .. I DT,TM]"",NO,$D(^EISCP(DT,TM,NO)) K ^EISCP(DT,TM,NO) S COUNT=COUNT+1
+ . S B=COUNT_" File(s) Deleted" D GETE^TKVB
+ I P1="DET" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO,0,0))
+ . F I=1:1:11 S TMP=$P(DATA,"^",I),B=$P(TMP,".")_$C(9)_$P(TMP,": ",2) D GETM^TKVB
+ . S B="" D GETE^TKVB
+ I P1="LIST" D
+ . S TYPE=P2
+ . S B="Entity10"_$C(9)_"Date10"_$C(9)_"Time10"_$C(9)_"Form08"_$C(9)_"Grp/Pv08"_$C(9)_"Errors08"_$C(9)_"Entity Selected20"_$C(9)_"Status08" D GETM^TKVB
+ . S ENT="" D ENTLIST(.ENT)
+ . S DT=""
+ . F  S DT=$O(^EISCP(DT),-1) Q:DT=""  S TM="" D
+ .. F  S TM=$O(^EISCP(DT,TM),-1) Q:TM=""  S NO="" D
+ ... F  S NO=$O(^EISCP(DT,TM,NO)) Q:NO=""  D
+ .... S DATA=$G(^EISCP(DT,TM,NO))
+ .... S ENT=$P(DATA,":") I ENT,'$D(ENT(ENT)) Q
+ .... I TYPE]"",$P(DATA,"***",3)'=TYPE Q
+ .... S DATE=$$DG^IDATE(DT),DATE=$E(DATE,5,6)_"/"_$E(DATE,7,8)_"/"_$E(DATE,1,4)
+ .... S TIME=$$TIME(TM)
+ .... S B=DT_":"_TM_":"_NO_$C(9)_$P(DATA,":")_$C(9)_DATE_$C(9)_TIME_$C(9)_$P(DATA,":",2)_$C(9)_$P(DATA,":",5)_$C(9)_$P(DATA,":",6)_$C(9)_$P(DATA,":",7)_" "_$P(DATA,":",8)_$C(9)_$P(DATA,"***",3) D GETM^TKVB
+ . S B="" D GETE^TKVB
+ I P1="SEL" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$P($G(^EISCP(DT,TM,NO)),"***",1,2),CT=1
+ . S B="File^"_$P($P(DATA,":",4),"^")_":Program^"_$P(DATA,":",3)_":"
+ . S FROM=$TR($P(DATA,":",9),"*")
+ . S B=B_"Patient^From^"_FROM_",Thru^"_$P(DATA,":",10)_":"
+ . S B=B_"A/R Class^"_$P(DATA,":",11)_"^" F I=20:1:28 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Reprint^"_$P(DATA,":",12)_",From^"_$S($P(DATA,":",38):$P(DATA,":",38)_"/"_$P(DATA,":",39)_"/"_$P(DATA,":",40),1:"")
+ . S B=B_",Thru^"_$S($P(DATA,":",41):$P(DATA,":",41)_"/"_$P(DATA,":",42)_"/"_$P(DATA,":",43),1:"")
+ . S B=B_":Serv/Post Dates^"_$P(DATA,":",13)_",From^"_$S($P(DATA,":",44):$P(DATA,":",44)_"/"_$P(DATA,":",45)_"/"_$P(DATA,":",46),1:"")
+ . S B=B_",Thru^"_$S($P(DATA,":",47):$P(DATA,":",47)_"/"_$P(DATA,":",48)_"/"_$P(DATA,":",49),1:"")
+ . S B=B_":Group or Provider Id^"_$P(DATA,":",14)_":"
+ . S B=B_"Entities^"_$P(DATA,":",15)_"^" F I=29:1:37 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Claims with Errors^"_$P(DATA,":",16)_":"
+ . S B=B_"Insurance Codes^"_$P(DATA,":",17)_"^" F I=50:1:55 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Provider Codes^"_$P(DATA,":",18)_"^" F I=56:1:61 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . S B=B_":Place of Service^"_$P(DATA,":",19)_"^" F I=62:1:70 S TMP=$P(DATA,":",I) I TMP]"" S B=B_TMP_","
+ . D GETE^TKVB
+ I P1="SEND" D
+ . I P2["!" D
+ .. S SYS=$$SYS^SET,CDIR=$$PATH^MNU2,^EZ($I)=EZ
+ .. S PROG=$P(P2,"!"),(FLAG,FORM)=""
+ .. F  S FORM=$O(^SETFRMG(EZ,FORM)) Q:FORM=""  D  I FLAG Q
+ ... I PROG=$P(^SETFRMG(EZ,FORM),":",12) S FLAG=1
+ .. S TKVB="" D KERMIT^MNU22 ; carrier.lst
+ .. S TKVB=1 D ^MNU23 ; carrier.tab
+ .. S PRG="SETS^"_PROG_"L",TKVB("PREP")=1 D @PRG
+ .. S INIOK=1 I '$$EXIST^DFILE(CDIR_FILEI) D CHECKX^SETCOM1(PROG),INI^SETCOM1 S INIOK=$G(ER)=0 ; ini
+ .. S B="1:SEND" D GETM^TKVB
+ .. S FL="CARRIER.LST",B="***NEWFILE***:"_FL D GETM^TKVB
+ .. S B=$P(P2,"!") D GETM^TKVB
+ .. //USED TO BE PROG="MODFLCX"!(PROG="MODFLBX")!(PROG="MODGABX")
+ .. I PROG="MODFLCX" S PRG="CHECKS^"_PROG_"L",LOGON=$P($G(^SETFRMG(EZ,FORM,1)),":",2),PASSWORD=$P($G(^SETFRMG(EZ,FORM,1)),":",3),TEST=$S($P($G(^SETFRMG(EZ,FORM)),":",33)="P":"PROD",1:"TEST") D @PRG I $G(ER)="" S FL="LOGON" D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") I T U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... I T C FDEV
+ .. F FL="CARRIER.TAB",FILEI Q:FL=FILEI&('INIOK)  D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") I T U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... I T C FDEV
+ .. //USED TO BE PROG="MODFLCX"!(PROG="MODFLBX")!(PROG="MODGABX")
+ .. S B="" D GETE^TKVB
+ . I P2'["!" D
+ .. S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ .. I 'DT!(TM="")!('NO) S B="0:KEYS UNDEFINED" D GETE^TKVB Q
+ .. S SYS=$$SYS^SET,CDIR=$$PATH^MNU2,^EZ($I)=EZ,TPSEQ=""
+ .. S S=$P(^EISCP(DT,TM,NO),"***",1),FORM=$P(S,":",2),PROG=$P(S,":",3)
+ .. S TKVB="" D KERMIT^MNU22 S TKVB=1 D ^MNU23
+ .. S TKVB=1,X=$$FIL^EISCP(DT,TM,NO)
+ .. I 'X!ERR S B="0:ERROR DURING PROCESSING ("_$G(ER)_")" D GETE^TKVB Q
+ .. S B="1:SEND" D GETM^TKVB
+ .. // USED TO BE (PROG="MODFLBX")!(PROG="MODGABX") it is not needed
+ .. I PROG="MODFLCX" S PRG="CHECKS^"_PROG_"L",LOGON=$P($G(^SETFRMG(EZ,FORM,1)),":",2),PASSWORD=$P($G(^SETFRMG(EZ,FORM,1)),":",3),TEST=$S($P($G(^SETFRMG(EZ,FORM)),":",33)="P":"PROD",1:"TEST") D @PRG I $G(ER)="" S FL="LOGON" D
+ ... S B="***NEWFILE***:"_FL,FILE=CDIR_FL_$C(13,10) U 0 D GETM^TKVB
+ ... S T=$$FOPEN^DFILE($P(FILE,$C(13,10)),"R") U FDEV R B S B=B_$C(13,10) U 0 D GETM^TKVB
+ ... C FDEV
+ .. S B="***NEWFILE***:"_$P($P(^EISCP(DT,TM,NO),":",4),"^") D GETM^TKVB
+ .. S SUB=0 F  S SUB=$O(^EISCP(DT,TM,NO,SUB)) Q:SUB=""  S B=^(SUB) D GETM^TKVB
+ .. S B="***NEWFILE***:CARRIER.LST"_$C(13,10) D GETM^TKVB
+ .. S B=$P(^EISCP(DT,TM,NO),":",3)_$C(13,10) D GETM^TKVB
+ .. S FILE="" F  S FILE=$O(^EISCP(DT,TM,NO,0,0,FILE)) Q:FILE=""  D
+ ... Q:FILE="LOGON"
+ ... S B="***NEWFILE***:"_FILE_$C(13,10) D GETM^TKVB S SUB=""
+ ... F  S SUB=$O(^EISCP(DT,TM,NO,0,0,FILE,SUB)) Q:SUB=""  S B=^(SUB)_$C(13,10) D GETM^TKVB
+ .. S B="" D GETE^TKVB
+ I P1="TYPE" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO))
+ . S RTN=$P(DATA,":",3)
+ . I RTN="" S B="PROGRAM UNDEFINED" D GETE^TKVB Q
+ . S RUNRPT=$P($G(^PRG(RTN,1)),":",7)
+ . S RUNRPT=$S(RUNRPT>2:RUNRPT,RTN["MODNEIX"&($D(^MSCG("NEICW"))):2,RTN["MODUBX"&($D(^MSCG("UBXW"))):2,RTN["MODNJDX"&($D(^MSCG("NJDW"))):2,1:RUNRPT)
+ . I RUNRPT="",RTN["MODNEIX"!(RTN["MODUBX")!(RTN["MODNJDX") S RUNRPT=1
+ . I RUNRPT="" F I=1:1 S T=$T(DATA+I^MNU23) Q:$P(T,":",2)=""  I RTN[$P(T,":",2) S RUNRPT=1
+ . S B=$S(RUNRPT:RUNRPT,1:0)
+ . D GETE^TKVB
+ I P1="STAT" D
+ . S DT=$P(P2,":"),TM=$P(P2,":",2),NO=$P(P2,":",3)
+ . I 'DT!(TM="")!('NO) S B="KEYS UNDEFINED" D GETE^TKVB Q
+ . S DATA=$G(^EISCP(DT,TM,NO))
+ . S B=$P(DATA,"***",3)
+ . D GETE^TKVB
+ Q
+ ;
+SETEISCP ; Prepared Files
+ D SETEISCP^TKVBUT4
+ Q
+LM ; get Letter Module Prefs
+ G LM^TKVBUT4
+SETLM ; set Letter Module Prefs
+ G SETLM^TKVBUT4
+ ;
+TIME(H) 
+ Q $$TIME^TKVBUT4(H)
+ ;
+POSTDT ; Posting Date Hold/Release
+ G POSTDT^TKVBUT5
+SETPOSTD ; Posting Date Set Hold/Release
+ G SETPOSTD^TKVBUT5
+SETCOPAY(OUT) ;SET COPAY
+ D SETCOPAY^TKVBUT4(.OUT)
+ Q
+SETRECALL(OUT) ;SET RECALL
+ D SETRECALL^TKVBUT4(.OUT)
+ Q
+ENTLIST(ENT) ;Entity Dropdown List
+ D ENTLIST^TKVBUT4(.ENT)
+ Q		  
+		 
+.
+
+webTable^INT^1^64957,44467.942697^0
+webTable ;
+		d @(MODULE)
+		q
+EISCP   ;
+		d EISCP^TKVBUT2 
+		q
+
+
+
