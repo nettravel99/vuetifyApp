@@ -8,14 +8,16 @@
             <v-card-text>
               <v-data-table
                 :headers="headers"
-                :items="result"
-                style="height: 19px"
-                class="elevation-1"
+                :items="items"
                 :pagination.sync="pagination"
                 :rows-per-page-items="pagination.rowsPerPageItems"
+                :total-items="totalFiles"
+                :loading="loading"
+                style="height: 19px"
+                class="elevation-1"
               >
                 <template slot="items" slot-scope="props">
-                  <tr @click="detail(props.index)" key="props.index">
+                  <tr @click="detail(props.index)" item-key="props.inde">
                     <td>{{props.index}}</td>
                     <td>{{props.item.date}}</td>
                     <td>{{props.item.entity}}</td>
@@ -108,46 +110,7 @@
         <v-flex flex>
           <v-card class="box2">
             <v-card-text>
-              <table>
-                <tr>
-                  <td>Created</td>
-                  <td>{{ackInfo.created}}</td>
-                </tr>
-
-                <tr>
-                  <td>ITS</td>
-                  <td>{{ackInfo.ITS}}</td>
-                </tr>
-
-                <tr>
-                  <td>Number</td>
-                  <td>{{ackInfo.NO}}</td>
-                </tr>
-
-                <tr>
-                  <td>File</td>
-                  <td>{{ackInfo.file}}</td>
-                </tr>
-
-                <tr>
-                  <td>Sent by Operator</td>
-                  <td>{{ackInfo.operator}}</td>
-                </tr>
-                <tr>
-                  <td>Sent</td>
-                  <td>{{ackInfo.sent}}</td>
-                </tr>
-
-                <tr>
-                  <td>Acknowledgement</td>
-                  <td>{{ackInfo.result}}</td>
-                </tr>
-
-                <tr>
-                  <td>ID</td>
-                  <td>{{ackInfo.ID}}</td>
-                </tr>
-              </table>
+              <input v-model="name" placeholder="edit me">
             </v-card-text>
           </v-card>
         </v-flex>
@@ -164,6 +127,21 @@ export default {
     name: "George",
     FORM:
       '<template> <v-form v-model="valid"><v-text-field v-model="name" :rules="nameRules"       :counter="10"       label="Name"       required     ></v-text-field>     <v-text-field       v-model="email"       :rules="emailRules"       label="E-mail"       required     ></v-text-field>   </v-form> </template>',
+    totalFiles: 0,
+    search: "",
+    loading: true,
+    serverSide: true, // Server side false means this is a one time retrieval into memory and then paged locally.
+    pagination: {
+      page: 1,
+      rowsPerPage: 8,
+      totalItems: 0,
+      descending: true,
+      rowsPerPageItems: [5, 10, 20, 25]
+    },
+    fileInfo: [],
+    ackInfo: {},
+    result: [],
+    items: [],
 
     headers: [
       {
@@ -185,73 +163,85 @@ export default {
       { text: "Time", value: "time" },
       { text: "Detail", value: "detail" }
     ],
-    pagination: {
-      rowsPerPage: 25,
-      rowsPerPageItems: [5, 10, 15, 20, 25],
-      descending: true,
-      page: 1,
-      totalItems: 0
-    },
 
     credentials: {
       user: "john"
-    },
-    fileInfo: [],
-    ackInfo: {},
-    result: [],
-    items: [
-      {
-        message: "Foo"
-      },
-      {
-        message: "Bar"
-      }
-    ]
+    }
   }),
+  watch: {
+    pagination: {
+      handler() {
+        if (this.serverSide) {
+          this.api();
+        }
+
+        this.getItems();
+
+        //this.getDataFromApi().then(data => {
+        // this.desserts = data.items;
+        // this.totalDesserts = data.total;
+        //}
+        // );
+      },
+      deep: true
+    },
+    name: {
+      handler() {
+        console.log("Name: ", this.name);
+      }
+    }
+  },
+
   mounted() {
     console.log("Mounted called");
-    axios
-      .post(
-        "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
-        this.credentials
-      )
-      .then(response => {
-        this.result = response.data.data;
-        console.log("Results from Mounted: ", this.result);
-        if (0 in this.result) {
-          this.ackInfo = JSON.parse(this.result[0].ACK);
-          this.fileInfo = JSON.parse(this.result[0].FILEINFO);
+    console.log("Pagination: ", this.pagination);
 
-          // checks if 0 is an index of result
-          //   axios
-          //     .post(
-          //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
-          //         this.result[0].DATETIMENO,
-          //       this.credentials
-          //     )
-          //     .then(response => {
-          //       this.fileInfo = response.data.data;
-          //       console.log("Results from file details: ", this.fileInfo);
-          //     });
-        }
-      });
+    this.api();
   },
 
   methods: {
     api() {
       axios
-        .post(
-          "http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP",
-          this.credentials
-        )
+        .post("http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP", {
+          credentials: this.credentials,
+          pagination: this.pagination,
+          serverSide: this.serverSide
+        })
         .then(response => {
           this.result = response.data.data;
-          console.log("Results: ", this.result);
+          console.log("Results from AXIOS: ", this.result);
+          if (0 in this.result) {
+            this.ackInfo = JSON.parse(this.result[0].ACK);
+            this.fileInfo = JSON.parse(this.result[0].FILEINFO);
+            this.loading = false;
+            this.totalFiles = 200;
+          }
+
+          this.getItems();
+        })
+        .catch(error => {
+          console.log(error);
         });
     },
-    // async api() {     const result = await
-    // axios.post("http://127.0.0.1:5099/A^GJGAXIOS", this.credentials); this.result
-    // = result.data.data;     console.log("Results: ", this.result); },
+
+    getItems() {
+      console.log("getItems called:");
+      if (this.serverSide) {
+        this.items = this.result;
+      } else {
+        const { sortBy, descending, page, rowsPerPage } = this.pagination;
+
+        if (rowsPerPage > 0) {
+          this.items = this.result.slice(
+            (page - 1) * rowsPerPage,
+            page * rowsPerPage
+          );
+        }
+        console.log("Items: ", this.items);
+        console.log("Pagination: ", this.pagination);
+      }
+    },
+
     buttonClick(xxx) {
       alert("Button click", xxx);
     },
@@ -259,17 +249,6 @@ export default {
       console.log("before: ", this.result[idx].ACK);
       this.ackInfo = JSON.parse(this.result[idx].ACK);
       this.fileInfo = JSON.parse(this.result[idx].FILEINFO);
-
-      //   axios
-      //     .post(
-      //       "http://127.0.0.1:5099/A^GJGAXIOS?P1=DET&MODULE=EISCP&P2=" +
-      //         this.result[xxx].DATETIMENO,
-      //       this.credentials
-      //     )
-      //     .then(response => {
-      //       this.fileInfo = response.data.data;
-      //       console.log("Results from file details: ", this.fileInfo);
-      //     });
     }
   }
 };
