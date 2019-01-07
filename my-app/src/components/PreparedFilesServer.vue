@@ -17,7 +17,14 @@
                 class="elevation-1"
               >
                 <template slot="items" slot-scope="props">
-                  <tr @click="detail(props.index)" item-key="props.inde">
+                  <tr @click="detail(props.index)" item-key="props.index">
+                    <td>{{props.index}}</td>
+                    <td
+                      v-for="(header, index) in headers"
+                      :key="`header -${index}`"
+                    >{{ props.item[header.value] }}</td>
+                  </tr>
+                  <!-- <tr @click="detail(props.index)" item-key="props.inde">
                     <td>{{props.index}}</td>
                     <td>{{props.item.date}}</td>
                     <td>{{props.item.entity}}</td>
@@ -36,7 +43,7 @@
                       @click="detail(props.index)"
                       medium
                     >pageview</v-icon>
-                  </tr>
+                  </tr>-->
                 </template>
               </v-data-table>
             </v-card-text>
@@ -130,7 +137,12 @@ export default {
     totalFiles: 0,
     search: "",
     loading: true,
-    serverSide: true, // Server side false means this is a one time retrieval into memory and then paged locally.
+    server: {
+      serverSide: true, // Server side false means this is a one time retrieval into memory and then paged locally.
+      serverHandle: "",
+      initialLoad: true
+    },
+
     pagination: {
       page: 1,
       rowsPerPage: 8,
@@ -171,7 +183,7 @@ export default {
   watch: {
     pagination: {
       handler() {
-        if (this.serverSide) {
+        if (this.server.serverSide) {
           this.api();
         }
 
@@ -205,10 +217,12 @@ export default {
         .post("http://127.0.0.1:5099/A^GJGAXIOS?P1=LIST&MODULE=EISCP", {
           credentials: this.credentials,
           pagination: this.pagination,
-          serverSide: this.serverSide
+          server: this.server
         })
         .then(response => {
           this.result = response.data.data;
+          this.server.serverHandle = response.data.server.serverHandle;
+          this.server.initialLoad = response.data.server.initialLoad;
           console.log("Results from AXIOS: ", this.result);
           if (0 in this.result) {
             this.ackInfo = JSON.parse(this.result[0].ACK);
@@ -226,7 +240,7 @@ export default {
 
     getItems() {
       console.log("getItems called:");
-      if (this.serverSide) {
+      if (this.server.serverSide) {
         this.items = this.result;
       } else {
         const { sortBy, descending, page, rowsPerPage } = this.pagination;
